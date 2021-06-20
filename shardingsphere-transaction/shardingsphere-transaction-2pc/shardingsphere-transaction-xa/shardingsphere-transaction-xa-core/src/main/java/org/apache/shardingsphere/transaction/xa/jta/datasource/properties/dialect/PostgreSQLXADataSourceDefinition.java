@@ -34,6 +34,6 @@ public final class PostgreSQLXADataSourceDefinition implements XADataSourceDefin
     
     @Override
     public Collection<String> getXADriverClassName() {
-        return Collections.singletonList("org.postgresql.xa.PGXADataSource");
+        return Collections.singletonList("com.impossibl.postgres.jdbc.xa.PGXADataSource");
     }
 }
