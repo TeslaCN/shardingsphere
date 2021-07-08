@@ -21,6 +21,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.shardingsphere.db.protocol.GlobalContext;
 import org.apache.shardingsphere.db.protocol.packet.CommandPacket;
 import org.apache.shardingsphere.db.protocol.packet.CommandPacketType;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
@@ -62,6 +63,7 @@ public final class CommandExecutorTask implements Runnable {
      */
     @Override
     public void run() {
+        GlobalContext.startPoints[++GlobalContext.i] = System.nanoTime() / 1000;
         boolean isNeedFlush = false;
         try (PacketPayload payload = databaseProtocolFrontendEngine.getCodecEngine().createPacketPayload((ByteBuf) message)) {
             ConnectionStatus connectionStatus = backendConnection.getConnectionStatus();
@@ -85,11 +87,14 @@ public final class CommandExecutorTask implements Runnable {
             }
             processClosedExceptions(exceptions);
         }
+        GlobalContext.endPoints[GlobalContext.i] = System.nanoTime() / 1000;
+        log.info("Elapse: {} Task run took: {}", GlobalContext.endPoints[GlobalContext.i] - GlobalContext.startPoints[0], GlobalContext.endPoints[GlobalContext.i] - GlobalContext.startPoints[GlobalContext.i]);
     }
     
     private boolean executeCommand(final ChannelHandlerContext context, final PacketPayload payload, final BackendConnection backendConnection) throws SQLException {
         CommandExecuteEngine commandExecuteEngine = databaseProtocolFrontendEngine.getCommandExecuteEngine();
         CommandPacketType type = commandExecuteEngine.getCommandPacketType(payload);
+        log.info("{}", type);
         CommandPacket commandPacket = commandExecuteEngine.getCommandPacket(payload, type, backendConnection);
         CommandExecutor commandExecutor = commandExecuteEngine.getCommandExecutor(type, commandPacket, backendConnection);
         try {

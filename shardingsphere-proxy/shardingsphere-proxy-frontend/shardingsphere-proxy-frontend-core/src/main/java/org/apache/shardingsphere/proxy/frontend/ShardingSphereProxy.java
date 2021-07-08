@@ -36,6 +36,14 @@ import org.apache.shardingsphere.proxy.backend.context.BackendExecutorContext;
 import org.apache.shardingsphere.proxy.frontend.netty.ServerHandlerInitializer;
 import org.apache.shardingsphere.proxy.frontend.protocol.FrontDatabaseProtocolTypeFactory;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.text.MessageFormat;
+import java.util.Arrays;
+
 /**
  * ShardingSphere-Proxy.
  */
@@ -59,6 +67,7 @@ public final class ShardingSphereProxy {
             initServerBootstrap(bootstrap);
             ChannelFuture future = bootstrap.bind(port).sync();
             log.info("ShardingSphere-Proxy start success.");
+            doExecute();
             future.channel().closeFuture().sync();
         } finally {
             workerGroup.shutdownGracefully();
@@ -82,5 +91,44 @@ public final class ShardingSphereProxy {
                 .childOption(ChannelOption.TCP_NODELAY, true)
                 .handler(new LoggingHandler(LogLevel.INFO))
                 .childHandler(new ServerHandlerInitializer(FrontDatabaseProtocolTypeFactory.getDatabaseType()));
+    }
+    
+    private void doExecute() {
+        //        String url = "jdbc:mysql://localhost:3306/demo_ds_0?useServerPrepStmts=true&cachePrepStmts=true&useSSL=false";
+//        String sql = "SELECT * FROM t_order_0 WHERE order_id=?";
+        String url = "jdbc:mysql://127.0.0.1:13306/sharding_db?useSSL=false&useServerPrepStmts=true&cachePrepStmts=true";
+        String sql = "SELECT * FROM t_order WHERE order_id=?";
+        String username = "root";
+        String password = "sudo reboot";
+        int times = 1000;
+        long[] took = new long[times];
+        try (Connection connection = DriverManager.getConnection(url, username, password)) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+                for (int i = 0; i < times; i++) {
+                    took[i] = executeQuery(preparedStatement);
+                }
+            }
+        } catch (final SQLException ex) {
+            ex.printStackTrace();
+        }
+        Arrays.sort(took);
+        long total = 0;
+        for (int i = 1; i < took.length - 1; i++) {
+            total += took[i];
+        }
+        System.out.println(MessageFormat.format("Average: {0} us", total / (took.length - 2)));
+    }
+    
+    private long executeQuery(final PreparedStatement preparedStatement) throws SQLException {
+        preparedStatement.setLong(1, 1);
+        long before = System.nanoTime() / 1000;
+        try (ResultSet resultSet = preparedStatement.executeQuery()) {
+            while (resultSet.next()) {
+                resultSet.getObject(1);
+            }
+        }
+        long time = System.nanoTime() / 1000 - before;
+        System.out.println(MessageFormat.format("{0} us", time));
+        return time;
     }
 }
