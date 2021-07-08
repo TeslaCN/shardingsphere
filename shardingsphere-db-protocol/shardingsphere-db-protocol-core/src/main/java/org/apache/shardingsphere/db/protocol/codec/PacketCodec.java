@@ -23,6 +23,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageCodec;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.shardingsphere.db.protocol.GlobalContext;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
 
 import java.util.List;
@@ -38,6 +39,10 @@ public final class PacketCodec extends ByteToMessageCodec<DatabasePacket<?>> {
     
     @Override
     protected void decode(final ChannelHandlerContext context, final ByteBuf in, final List<Object> out) {
+        GlobalContext.startPoints = new long[64];
+        GlobalContext.endPoints = new long[64];
+        GlobalContext.i = 0;
+        GlobalContext.startPoints[GlobalContext.i] = System.nanoTime() / 1000;
         int readableBytes = in.readableBytes();
         if (!databasePacketCodecEngine.isValidHeader(readableBytes)) {
             return;
@@ -46,14 +51,20 @@ public final class PacketCodec extends ByteToMessageCodec<DatabasePacket<?>> {
             log.debug("Read from client {} : \n {}", context.channel().id().asShortText(), ByteBufUtil.prettyHexDump(in));
         }
         databasePacketCodecEngine.decode(context, in, out, readableBytes);
+        GlobalContext.endPoints[GlobalContext.i] = System.nanoTime() / 1000;
+        long decodeTook = GlobalContext.endPoints[GlobalContext.i] - GlobalContext.startPoints[GlobalContext.i];
+        log.info("Elapse: {} Decode took: {}", decodeTook, decodeTook);
     }
     
     @SuppressWarnings("unchecked")
     @Override
     protected void encode(final ChannelHandlerContext context, final DatabasePacket<?> message, final ByteBuf out) {
+        GlobalContext.startPoints[++GlobalContext.i] = System.nanoTime() / 1000;
         databasePacketCodecEngine.encode(context, message, out);
         if (log.isDebugEnabled()) {
             log.debug("Write to client {} : \n {}", context.channel().id().asShortText(), ByteBufUtil.prettyHexDump(out));
         }
+        GlobalContext.endPoints[GlobalContext.i] = System.nanoTime() / 1000;
+        log.info("Elapse: {} Encode took: {}", GlobalContext.endPoints[GlobalContext.i] - GlobalContext.startPoints[0], GlobalContext.endPoints[GlobalContext.i] - GlobalContext.startPoints[GlobalContext.i]);
     }
 }
