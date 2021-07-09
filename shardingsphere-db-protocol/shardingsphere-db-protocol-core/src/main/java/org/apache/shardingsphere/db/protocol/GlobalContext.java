@@ -19,9 +19,5 @@ package org.apache.shardingsphere.db.protocol;
 
 public final class GlobalContext {
     
-    public static long[] startPoints = new long[64];
-    
-    public static long[] endPoints = new long[64];
-    
-    public static int i;
+    public static long clientStart;
 }

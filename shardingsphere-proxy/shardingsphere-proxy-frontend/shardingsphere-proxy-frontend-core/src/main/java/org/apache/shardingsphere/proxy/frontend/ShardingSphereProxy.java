@@ -32,6 +32,7 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.shardingsphere.db.protocol.GlobalContext;
 import org.apache.shardingsphere.proxy.backend.context.BackendExecutorContext;
 import org.apache.shardingsphere.proxy.frontend.netty.ServerHandlerInitializer;
 import org.apache.shardingsphere.proxy.frontend.protocol.FrontDatabaseProtocolTypeFactory;
@@ -121,7 +122,7 @@ public final class ShardingSphereProxy {
     
     private long executeQuery(final PreparedStatement preparedStatement) throws SQLException {
         preparedStatement.setLong(1, 1);
-        long before = System.nanoTime() / 1000;
+        long before = GlobalContext.clientStart = System.nanoTime() / 1000;
         try (ResultSet resultSet = preparedStatement.executeQuery()) {
             while (resultSet.next()) {
                 resultSet.getObject(1);
