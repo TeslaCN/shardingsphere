@@ -17,6 +17,8 @@
 
 package org.apache.shardingsphere.proxy.backend.communication.jdbc.executor.callback.impl;
 
+import lombok.extern.slf4j.Slf4j;
+import org.apache.shardingsphere.db.protocol.GlobalContext;
 import org.apache.shardingsphere.infra.database.type.DatabaseType;
 import org.apache.shardingsphere.proxy.backend.communication.DatabaseCommunicationEngine;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.executor.callback.ProxyJDBCExecutorCallback;
@@ -28,6 +30,7 @@ import java.sql.Statement;
 /**
  * Statement executor callback for proxy.
  */
+@Slf4j
 public final class ProxyStatementExecutorCallback extends ProxyJDBCExecutorCallback {
     
     public ProxyStatementExecutorCallback(final DatabaseType databaseType, final SQLStatement sqlStatement, final DatabaseCommunicationEngine databaseCommunicationEngine,
@@ -37,6 +40,12 @@ public final class ProxyStatementExecutorCallback extends ProxyJDBCExecutorCallb
     
     @Override
     protected boolean execute(final String sql, final Statement statement, final boolean isReturnGeneratedKeys) throws SQLException {
-        return statement.execute(sql, isReturnGeneratedKeys ? Statement.RETURN_GENERATED_KEYS : Statement.NO_GENERATED_KEYS);
+        long beforeRun = System.nanoTime() / 1000;
+        try {
+            return statement.execute(sql, isReturnGeneratedKeys ? Statement.RETURN_GENERATED_KEYS : Statement.NO_GENERATED_KEYS);
+        } finally {
+            long afterRun = System.nanoTime() / 1000;
+            log.info("{} ~ {}\tJDBC Statement took: {}", beforeRun - GlobalContext.clientStart, afterRun - GlobalContext.clientStart, afterRun - beforeRun);
+        }
     }
 }
