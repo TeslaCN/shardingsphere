@@ -98,7 +98,7 @@ public final class ShardingSphereProxy {
         //        String url = "jdbc:mysql://localhost:3306/demo_ds_0?useServerPrepStmts=true&cachePrepStmts=true&useSSL=false";
 //        String sql = "SELECT * FROM t_order_0 WHERE order_id=?";
         String url = "jdbc:mysql://127.0.0.1:13306/sharding_db?useSSL=false&useServerPrepStmts=true&cachePrepStmts=true";
-        String sql = "SELECT * FROM t_order WHERE order_id=?";
+        String sql = "SELECT * FROM t_order WHERE order_id=? and user_id = ?";
         String username = "root";
         String password = "sudo reboot";
         int times = 1000;
@@ -122,6 +122,7 @@ public final class ShardingSphereProxy {
     
     private long executeQuery(final PreparedStatement preparedStatement) throws SQLException {
         preparedStatement.setLong(1, 1);
+        preparedStatement.setLong(2, 1);
         long before = GlobalContext.clientStart = System.nanoTime() / 1000;
         try (ResultSet resultSet = preparedStatement.executeQuery()) {
             while (resultSet.next()) {
