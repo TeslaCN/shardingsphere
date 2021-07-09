@@ -22,6 +22,7 @@ import io.netty.channel.ChannelHandlerContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.shardingsphere.db.protocol.GlobalContext;
+import org.apache.shardingsphere.db.protocol.mysql.AggregatePacket;
 import org.apache.shardingsphere.db.protocol.packet.CommandPacket;
 import org.apache.shardingsphere.db.protocol.packet.CommandPacketType;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
@@ -65,18 +66,20 @@ public final class CommandExecutorTask implements Runnable {
     public void run() {
         long beforeRun = System.nanoTime() / 1000;
         boolean isNeedFlush = false;
+        AggregatePacket aggregatePacket = new AggregatePacket();
         try (PacketPayload payload = databaseProtocolFrontendEngine.getCodecEngine().createPacketPayload((ByteBuf) message)) {
             ConnectionStatus connectionStatus = backendConnection.getConnectionStatus();
             if (!backendConnection.getTransactionStatus().isInConnectionHeldTransaction()) {
                 connectionStatus.waitUntilConnectionRelease();
                 connectionStatus.switchToUsing();
             }
-            isNeedFlush = executeCommand(context, payload, backendConnection);
+            isNeedFlush = executeCommand(context, payload, backendConnection, aggregatePacket);
             // CHECKSTYLE:OFF
         } catch (final Exception ex) {
             // CHECKSTYLE:ON
             processException(ex);
         } finally {
+            context.write(aggregatePacket);
             Collection<SQLException> exceptions = closeExecutionResources();
             if (isNeedFlush) {
                 context.flush();
@@ -91,7 +94,7 @@ public final class CommandExecutorTask implements Runnable {
         log.info("{} ~ {}\tTask run took: {}", beforeRun - GlobalContext.clientStart, afterRun - GlobalContext.clientStart, afterRun - beforeRun);
     }
     
-    private boolean executeCommand(final ChannelHandlerContext context, final PacketPayload payload, final BackendConnection backendConnection) throws SQLException {
+    private boolean executeCommand(final ChannelHandlerContext context, final PacketPayload payload, final BackendConnection backendConnection, final AggregatePacket aggregatePacket) throws SQLException {
         CommandExecuteEngine commandExecuteEngine = databaseProtocolFrontendEngine.getCommandExecuteEngine();
         CommandPacketType type = commandExecuteEngine.getCommandPacketType(payload);
         log.info("{}", type);
@@ -102,9 +105,10 @@ public final class CommandExecutorTask implements Runnable {
             if (responsePackets.isEmpty()) {
                 return false;
             }
-            responsePackets.forEach(context::write);
+//            responsePackets.forEach(context::write);
+            aggregatePacket.getPendingPackets().addAll(responsePackets);
             if (commandExecutor instanceof QueryCommandExecutor) {
-                return commandExecuteEngine.writeQueryData(context, backendConnection, (QueryCommandExecutor) commandExecutor, responsePackets.size());
+                return commandExecuteEngine.writeQueryData(context, backendConnection, (QueryCommandExecutor) commandExecutor, responsePackets.size(), aggregatePacket);
             }
         } finally {
             commandExecutor.close();
@@ -141,4 +145,5 @@ public final class CommandExecutorTask implements Runnable {
         }
         processException(ex);
     }
+    
 }

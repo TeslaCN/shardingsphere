@@ -20,6 +20,7 @@ package org.apache.shardingsphere.proxy.frontend.command;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.shardingsphere.db.protocol.codec.DatabasePacketCodecEngine;
+import org.apache.shardingsphere.db.protocol.mysql.AggregatePacket;
 import org.apache.shardingsphere.db.protocol.packet.CommandPacket;
 import org.apache.shardingsphere.db.protocol.packet.CommandPacketType;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
@@ -54,6 +55,9 @@ public final class CommandExecutorTaskTest {
     
     @Mock
     private DatabaseProtocolFrontendEngine engine;
+    
+    @Mock
+    private AggregatePacket aggregatePacket;
     
     @Mock
     private DatabasePacketCodecEngine codecEngine;
@@ -125,7 +129,7 @@ public final class CommandExecutorTaskTest {
         when(executeEngine.getCommandPacket(eq(payload), eq(commandPacketType), eq(backendConnection))).thenReturn(commandPacket);
         when(executeEngine.getCommandExecutor(eq(commandPacketType), eq(commandPacket), eq(backendConnection))).thenReturn(queryCommandExecutor);
         when(executeEngine.getCommandPacketType(eq(payload))).thenReturn(commandPacketType);
-        when(executeEngine.writeQueryData(any(ChannelHandlerContext.class), any(BackendConnection.class), any(QueryCommandExecutor.class), anyInt())).thenReturn(true);
+        when(executeEngine.writeQueryData(any(ChannelHandlerContext.class), any(BackendConnection.class), any(QueryCommandExecutor.class), anyInt(), aggregatePacket)).thenReturn(true);
         when(engine.getCommandExecuteEngine()).thenReturn(executeEngine);
         when(backendConnection.getConnectionStatus()).thenReturn(connectionStatus);
         when(codecEngine.createPacketPayload(eq(message))).thenReturn(payload);
@@ -138,7 +142,7 @@ public final class CommandExecutorTaskTest {
         verify(connectionStatus).switchToUsing();
         verify(handlerContext).write(databasePacket);
         verify(handlerContext).flush();
-        verify(executeEngine).writeQueryData(handlerContext, backendConnection, queryCommandExecutor, 1);
+        verify(executeEngine).writeQueryData(handlerContext, backendConnection, queryCommandExecutor, 1, aggregatePacket);
         verify(queryCommandExecutor).close();
         verify(backendConnection).closeDatabaseCommunicationEngines(true);
     }

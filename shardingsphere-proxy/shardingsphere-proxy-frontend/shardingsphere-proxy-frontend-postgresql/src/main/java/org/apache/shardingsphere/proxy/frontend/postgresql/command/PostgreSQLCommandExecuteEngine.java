@@ -18,6 +18,7 @@
 package org.apache.shardingsphere.proxy.frontend.postgresql.command;
 
 import io.netty.channel.ChannelHandlerContext;
+import org.apache.shardingsphere.db.protocol.mysql.AggregatePacket;
 import org.apache.shardingsphere.db.protocol.packet.CommandPacket;
 import org.apache.shardingsphere.db.protocol.packet.CommandPacketType;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
@@ -79,7 +80,7 @@ public final class PostgreSQLCommandExecuteEngine implements CommandExecuteEngin
     
     @Override
     public boolean writeQueryData(final ChannelHandlerContext context,
-                                  final BackendConnection backendConnection, final QueryCommandExecutor queryCommandExecutor, final int headerPackagesCount) throws SQLException {
+                                  final BackendConnection backendConnection, final QueryCommandExecutor queryCommandExecutor, final int headerPackagesCount, final AggregatePacket aggregatePacket) throws SQLException {
         if (queryCommandExecutor instanceof PostgreSQLComSyncExecutor) {
             return true;
         }

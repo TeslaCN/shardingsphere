@@ -18,6 +18,7 @@
 package org.apache.shardingsphere.proxy.frontend.mysql.command;
 
 import io.netty.channel.ChannelHandlerContext;
+import org.apache.shardingsphere.db.protocol.mysql.AggregatePacket;
 import org.apache.shardingsphere.db.protocol.mysql.packet.command.MySQLCommandPacket;
 import org.apache.shardingsphere.db.protocol.mysql.packet.command.MySQLCommandPacketFactory;
 import org.apache.shardingsphere.db.protocol.mysql.packet.command.MySQLCommandPacketType;
@@ -72,7 +73,7 @@ public final class MySQLCommandExecuteEngine implements CommandExecuteEngine {
     
     @Override
     public boolean writeQueryData(final ChannelHandlerContext context,
-                                  final BackendConnection backendConnection, final QueryCommandExecutor queryCommandExecutor, final int headerPackagesCount) throws SQLException {
+                                  final BackendConnection backendConnection, final QueryCommandExecutor queryCommandExecutor, final int headerPackagesCount, final AggregatePacket aggregatePacket) throws SQLException {
         if (ResponseType.QUERY != queryCommandExecutor.getResponseType() || !context.channel().isActive()) {
             return true;
         }
@@ -86,14 +87,16 @@ public final class MySQLCommandExecuteEngine implements CommandExecuteEngine {
                 backendConnection.getResourceLock().doAwait();
             }
             DatabasePacket<?> dataValue = queryCommandExecutor.getQueryRowPacket();
-            context.write(dataValue);
+//            context.write(dataValue);
+            aggregatePacket.getPendingPackets().add(dataValue);
             if (flushThreshold == count) {
-                context.flush();
+//                context.flush();
                 count = 0;
             }
             currentSequenceId++;
         }
-        context.write(new MySQLEofPacket(++currentSequenceId + headerPackagesCount));
+//        context.write(new MySQLEofPacket(++currentSequenceId + headerPackagesCount));
+        aggregatePacket.getPendingPackets().add(new MySQLEofPacket(++currentSequenceId + headerPackagesCount));
         return true;
     }
 }

@@ -18,6 +18,7 @@
 package org.apache.shardingsphere.proxy.frontend.command;
 
 import io.netty.channel.ChannelHandlerContext;
+import org.apache.shardingsphere.db.protocol.mysql.AggregatePacket;
 import org.apache.shardingsphere.db.protocol.packet.CommandPacket;
 import org.apache.shardingsphere.db.protocol.packet.CommandPacketType;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
@@ -88,8 +89,9 @@ public interface CommandExecuteEngine {
      * @param backendConnection backend connection
      * @param queryCommandExecutor query command executor
      * @param headerPackagesCount count of header packages
+     * @param aggregatePacket
      * @return is need flush
      * @throws SQLException SQL exception
      */
-    boolean writeQueryData(ChannelHandlerContext context, BackendConnection backendConnection, QueryCommandExecutor queryCommandExecutor, int headerPackagesCount) throws SQLException;
+    boolean writeQueryData(ChannelHandlerContext context, BackendConnection backendConnection, QueryCommandExecutor queryCommandExecutor, int headerPackagesCount, final AggregatePacket aggregatePacket) throws SQLException;
 }

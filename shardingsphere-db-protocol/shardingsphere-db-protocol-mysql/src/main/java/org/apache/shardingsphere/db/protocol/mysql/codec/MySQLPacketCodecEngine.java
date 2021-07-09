@@ -21,9 +21,11 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.shardingsphere.db.protocol.codec.DatabasePacketCodecEngine;
 import org.apache.shardingsphere.db.protocol.error.CommonErrorCode;
+import org.apache.shardingsphere.db.protocol.mysql.AggregatePacket;
 import org.apache.shardingsphere.db.protocol.mysql.packet.MySQLPacket;
 import org.apache.shardingsphere.db.protocol.mysql.packet.generic.MySQLErrPacket;
 import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
+import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
 
 import java.util.List;
 
@@ -54,7 +56,18 @@ public final class MySQLPacketCodecEngine implements DatabasePacketCodecEngine<M
     
     @Override
     public void encode(final ChannelHandlerContext context, final MySQLPacket message, final ByteBuf out) {
-        MySQLPacketPayload payload = new MySQLPacketPayload(context.alloc().buffer());
+        try (MySQLPacketPayload payload = new MySQLPacketPayload(context.alloc().buffer())) {
+            if (message instanceof AggregatePacket) {
+                for (DatabasePacket each : ((AggregatePacket) message).getPendingPackets()) {
+                    doWrite((MySQLPacket) each, out, payload);
+                }
+            } else {
+                doWrite(message, out, payload);
+            }
+        }
+    }
+    
+    private void doWrite(final MySQLPacket message, final ByteBuf out, final MySQLPacketPayload payload) {
         try {
             message.write(payload);
             // CHECKSTYLE:OFF
@@ -66,7 +79,6 @@ public final class MySQLPacketCodecEngine implements DatabasePacketCodecEngine<M
             out.writeMediumLE(payload.getByteBuf().readableBytes());
             out.writeByte(message.getSequenceId());
             out.writeBytes(payload.getByteBuf());
-            payload.close();
         }
     }
     
