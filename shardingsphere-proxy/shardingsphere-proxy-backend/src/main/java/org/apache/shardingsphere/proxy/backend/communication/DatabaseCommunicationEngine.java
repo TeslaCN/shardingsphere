@@ -18,6 +18,7 @@
 package org.apache.shardingsphere.proxy.backend.communication;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.shardingsphere.db.protocol.GlobalContext;
 import org.apache.shardingsphere.infra.binder.LogicSQL;
 import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
 import org.apache.shardingsphere.infra.binder.statement.dml.SelectStatementContext;
@@ -117,6 +118,7 @@ public final class DatabaseCommunicationEngine {
      * @throws SQLException SQL exception
      */
     public ResponseHeader execute() throws SQLException {
+        KernelProcessor.clientStart = GlobalContext.clientStart;
         ExecutionContext executionContext = kernelProcessor.generateExecutionContext(logicSQL, metaData, ProxyContext.getInstance().getMetaDataContexts().getProps());
         if (executionContext.getExecutionUnits().isEmpty()) {
             return new UpdateResponseHeader(executionContext.getSqlStatementContext().getSqlStatement());
