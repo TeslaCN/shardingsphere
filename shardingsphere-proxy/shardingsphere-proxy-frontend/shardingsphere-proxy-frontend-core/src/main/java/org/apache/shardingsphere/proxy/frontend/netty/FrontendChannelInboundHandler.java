@@ -61,14 +61,14 @@ public final class FrontendChannelInboundHandler extends ChannelInboundHandlerAd
     
     @Override
     public void channelRead(final ChannelHandlerContext context, final Object message) {
-        GlobalContext.startPoints[++GlobalContext.i] = System.nanoTime() / 1000;
+        long before = System.nanoTime() / 1000;
         if (!authenticated) {
             authenticated = authenticate(context, (ByteBuf) message);
             return;
         }
         ProxyStateContext.execute(context, message, databaseProtocolFrontendEngine, backendConnection);
-        GlobalContext.endPoints[GlobalContext.i] = System.nanoTime() / 1000;
-        log.info("Elapse: {} channelRead took: {}", GlobalContext.endPoints[GlobalContext.i] - GlobalContext.startPoints[0], GlobalContext.endPoints[GlobalContext.i] - GlobalContext.startPoints[GlobalContext.i]);
+        long after = System.nanoTime() / 1000;
+        log.info("{} ~ {}\tchannelRead took: {}", before - GlobalContext.clientStart, after - GlobalContext.clientStart, after - before);
     }
     
     private boolean authenticate(final ChannelHandlerContext context, final ByteBuf message) {
