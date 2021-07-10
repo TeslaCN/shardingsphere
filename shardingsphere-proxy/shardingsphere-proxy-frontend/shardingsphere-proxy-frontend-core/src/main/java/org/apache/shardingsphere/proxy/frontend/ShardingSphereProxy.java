@@ -68,7 +68,7 @@ public final class ShardingSphereProxy {
             initServerBootstrap(bootstrap);
             ChannelFuture future = bootstrap.bind(port).sync();
             log.info("ShardingSphere-Proxy start success.");
-            doExecute();
+//            doExecute();
             future.channel().closeFuture().sync();
         } finally {
             workerGroup.shutdownGracefully();

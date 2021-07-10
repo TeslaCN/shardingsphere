@@ -39,7 +39,7 @@ public final class PacketCodec extends ByteToMessageCodec<DatabasePacket<?>> {
     
     @Override
     protected void decode(final ChannelHandlerContext context, final ByteBuf in, final List<Object> out) {
-        long before = System.nanoTime() / 1000;
+        final long before = System.nanoTime() / 1000;
         int readableBytes = in.readableBytes();
         if (!databasePacketCodecEngine.isValidHeader(readableBytes)) {
             return;
@@ -48,19 +48,19 @@ public final class PacketCodec extends ByteToMessageCodec<DatabasePacket<?>> {
             log.debug("Read from client {} : \n {}", context.channel().id().asShortText(), ByteBufUtil.prettyHexDump(in));
         }
         databasePacketCodecEngine.decode(context, in, out, readableBytes);
-        long after = System.nanoTime() / 1000;
+        final long after = System.nanoTime() / 1000;
         log.info("{} ~ {}\tDecode took: {}", before - GlobalContext.clientStart, after - GlobalContext.clientStart, after - before);
     }
     
     @SuppressWarnings("unchecked")
     @Override
     protected void encode(final ChannelHandlerContext context, final DatabasePacket<?> message, final ByteBuf out) {
-        long before = System.nanoTime() / 1000;
+        final long before = System.nanoTime() / 1000;
         databasePacketCodecEngine.encode(context, message, out);
         if (log.isDebugEnabled()) {
             log.debug("Write to client {} : \n {}", context.channel().id().asShortText(), ByteBufUtil.prettyHexDump(out));
         }
-        long after = System.nanoTime() / 1000;
+        final long after = System.nanoTime() / 1000;
         log.info("{} ~ {}\tEncode took: {}", before - GlobalContext.clientStart, after - GlobalContext.clientStart, after - before);
     }
 }

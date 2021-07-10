@@ -63,7 +63,7 @@ public final class CommandExecutorTask implements Runnable {
      */
     @Override
     public void run() {
-        long beforeRun = System.nanoTime() / 1000;
+        final long beforeRun = System.nanoTime() / 1000;
         boolean isNeedFlush = false;
         try (PacketPayload payload = databaseProtocolFrontendEngine.getCodecEngine().createPacketPayload((ByteBuf) message)) {
             ConnectionStatus connectionStatus = backendConnection.getConnectionStatus();
@@ -87,7 +87,7 @@ public final class CommandExecutorTask implements Runnable {
             }
             processClosedExceptions(exceptions);
         }
-        long afterRun = System.nanoTime() / 1000;
+        final long afterRun = System.nanoTime() / 1000;
         log.info("{} ~ {}\tTask run took: {}", beforeRun - GlobalContext.clientStart, afterRun - GlobalContext.clientStart, afterRun - beforeRun);
     }
     

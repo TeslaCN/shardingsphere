@@ -19,5 +19,5 @@ package org.apache.shardingsphere.db.protocol;
 
 public final class GlobalContext {
     
-    public static long clientStart;
+    public static long clientStart = System.nanoTime() / 1000;
 }

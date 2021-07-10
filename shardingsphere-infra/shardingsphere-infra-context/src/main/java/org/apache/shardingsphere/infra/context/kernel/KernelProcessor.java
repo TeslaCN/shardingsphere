@@ -47,13 +47,13 @@ public final class KernelProcessor {
      * @return execution context
      */
     public ExecutionContext generateExecutionContext(final LogicSQL logicSQL, final ShardingSphereMetaData metaData, final ConfigurationProperties props) {
-        long beforeAll = System.nanoTime() / 1000;
+        final long beforeAll = System.nanoTime() / 1000;
         RouteContext routeContext = route(logicSQL, metaData, props);
-        long afterRoute = System.nanoTime() / 1000;
+        final long afterRoute = System.nanoTime() / 1000;
         SQLRewriteResult rewriteResult = rewrite(logicSQL, metaData, props, routeContext);
-        long afterRewrite = System.nanoTime() / 1000;
+        final long afterRewrite = System.nanoTime() / 1000;
         ExecutionContext result = createExecutionContext(logicSQL, metaData, routeContext, rewriteResult);
-        long afterAll = System.nanoTime() / 1000;
+        final long afterAll = System.nanoTime() / 1000;
         logSQL(logicSQL, props, result);
         log.info("{} ~ {}\tRoute took: {}", beforeAll - clientStart, afterRoute - clientStart, afterRoute - beforeAll);
         log.info("{} ~ {}\tRewrite took: {}", afterRoute - clientStart, afterRewrite - clientStart, afterRewrite - afterRoute);
