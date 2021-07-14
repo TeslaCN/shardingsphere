@@ -39,7 +39,7 @@ public final class OKProxyState implements ProxyState {
         if (requireOccupyThread(supportHint, backendConnection.getTransactionStatus().getTransactionType())) {
             ConnectionThreadExecutorGroup.getInstance().get(backendConnection.getConnectionId()).execute(task);
         } else {
-            task.run();
+            context.channel().eventLoop().execute(task);
         }
     }
     
