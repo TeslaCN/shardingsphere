@@ -17,9 +17,12 @@
 
 package org.apache.shardingsphere.proxy.frontend.netty;
 
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.db.protocol.codec.PacketCodec;
 import org.apache.shardingsphere.infra.database.type.DatabaseType;
@@ -39,6 +42,14 @@ public final class ServerHandlerInitializer extends ChannelInitializer<SocketCha
         DatabaseProtocolFrontendEngine databaseProtocolFrontendEngine = DatabaseProtocolFrontendEngineFactory.newInstance(databaseType);
         ChannelPipeline pipeline = socketChannel.pipeline();
         pipeline.addLast(new PacketCodec(databaseProtocolFrontendEngine.getCodecEngine()));
-        pipeline.addLast(new FrontendChannelInboundHandler(databaseProtocolFrontendEngine));
+        DefaultEventExecutorGroup eventExecutorGroup = new DefaultEventExecutorGroup(1);
+        pipeline.addLast(eventExecutorGroup, new FrontendChannelInboundHandler(databaseProtocolFrontendEngine));
+        pipeline.addLast(new ChannelInboundHandlerAdapter() {
+        
+            @Override
+            public void channelInactive(final ChannelHandlerContext ctx) {
+                eventExecutorGroup.shutdownGracefully();
+            }
+        });
     }
 }

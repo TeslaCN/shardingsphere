@@ -20,7 +20,6 @@ package org.apache.shardingsphere.proxy.frontend.postgresql;
 import lombok.SneakyThrows;
 import org.apache.shardingsphere.infra.database.type.dialect.PostgreSQLDatabaseType;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.BackendConnection;
-import org.apache.shardingsphere.proxy.frontend.executor.ConnectionThreadExecutorGroup;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLConnectionContext;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLConnectionContextRegistry;
 import org.junit.Test;
@@ -50,8 +49,6 @@ public final class PostgreSQLFrontendEngineTest {
         when(backendConnection.getConnectionId()).thenReturn(connectionId);
         PostgreSQLConnectionContextRegistry.getInstance().get(connectionId);
         PostgreSQLFrontendEngine frontendEngine = new PostgreSQLFrontendEngine();
-        ConnectionThreadExecutorGroup.getInstance().register(connectionId);
-        ConnectionThreadExecutorGroup.getInstance().unregisterAndAwaitTermination(connectionId);
         frontendEngine.release(backendConnection);
         assertTrue(getConnectionContexts().isEmpty());
     }

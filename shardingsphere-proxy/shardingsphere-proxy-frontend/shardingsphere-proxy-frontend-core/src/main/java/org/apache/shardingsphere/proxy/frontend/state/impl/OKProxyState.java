@@ -18,14 +18,10 @@
 package org.apache.shardingsphere.proxy.frontend.state.impl;
 
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.shardingsphere.infra.config.properties.ConfigurationPropertyKey;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.BackendConnection;
-import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 import org.apache.shardingsphere.proxy.frontend.command.CommandExecutorTask;
-import org.apache.shardingsphere.proxy.frontend.executor.ConnectionThreadExecutorGroup;
 import org.apache.shardingsphere.proxy.frontend.spi.DatabaseProtocolFrontendEngine;
 import org.apache.shardingsphere.proxy.frontend.state.ProxyState;
-import org.apache.shardingsphere.transaction.core.TransactionType;
 
 /**
  * OK proxy state.
@@ -34,16 +30,7 @@ public final class OKProxyState implements ProxyState {
     
     @Override
     public void execute(final ChannelHandlerContext context, final Object message, final DatabaseProtocolFrontendEngine databaseProtocolFrontendEngine, final BackendConnection backendConnection) {
-        boolean supportHint = ProxyContext.getInstance().getMetaDataContexts().getProps().<Boolean>getValue(ConfigurationPropertyKey.PROXY_HINT_ENABLED);
-        CommandExecutorTask task = new CommandExecutorTask(databaseProtocolFrontendEngine, backendConnection, context, message);
-        if (requireOccupyThread(supportHint, backendConnection.getTransactionStatus().getTransactionType())) {
-            ConnectionThreadExecutorGroup.getInstance().get(backendConnection.getConnectionId()).execute(task);
-        } else {
-            context.channel().eventLoop().execute(task);
-        }
-    }
-    
-    private boolean requireOccupyThread(final boolean supportHint, final TransactionType transactionType) {
-        return supportHint || TransactionType.isDistributedTransaction(transactionType);
+        // TODO Refactor CommandExecuteTask
+        new CommandExecutorTask(databaseProtocolFrontendEngine, backendConnection, context, message).run();
     }
 }
