@@ -18,10 +18,10 @@
 package org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.binary.bind;
 
 import lombok.Getter;
-import org.apache.shardingsphere.db.protocol.postgresql.constant.PostgreSQLBinaryColumnType;
 import org.apache.shardingsphere.db.protocol.postgresql.constant.PostgreSQLValueFormat;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.PostgreSQLCommandPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.PostgreSQLCommandPacketType;
+import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.binary.PostgreSQLBinaryColumnType;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.binary.PostgreSQLBinaryStatement;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.binary.PostgreSQLBinaryStatementRegistry;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.binary.bind.protocol.PostgreSQLBinaryProtocolValue;
@@ -54,6 +54,8 @@ public final class OpenGaussComBatchBindPacket extends PostgreSQLCommandPacket {
     
     private final PostgreSQLBinaryStatement binaryStatement;
     
+    private final int eachGroupParametersCount;
+    
     public OpenGaussComBatchBindPacket(final PostgreSQLPacketPayload payload, final int connectionId) {
         this.payload = payload;
         payload.readInt4();
@@ -70,8 +72,9 @@ public final class OpenGaussComBatchBindPacket extends PostgreSQLCommandPacket {
         for (int i = 0; i < resultFormatsLength; i++) {
             resultFormats.add(PostgreSQLValueFormat.valueOf(payload.readInt2()));
         }
-        binaryStatement = PostgreSQLBinaryStatementRegistry.getInstance().get(connectionId).getBinaryStatement(statementId);
+        binaryStatement = PostgreSQLBinaryStatementRegistry.getInstance().get(connectionId, statementId);
         sql = null == binaryStatement ? null : binaryStatement.getSql();
+        eachGroupParametersCount = payload.readInt2();
     }
     
     /**
@@ -96,9 +99,8 @@ public final class OpenGaussComBatchBindPacket extends PostgreSQLCommandPacket {
      */
     public List<Object> readOneGroupOfParameters() {
         List<PostgreSQLBinaryColumnType> columnTypes = binaryStatement.getColumnTypes();
-        int parameterCount = payload.readInt2();
-        List<Object> result = new ArrayList<>(parameterCount);
-        for (int parameterIndex = 0; parameterIndex < parameterCount; parameterIndex++) {
+        List<Object> result = new ArrayList<>(eachGroupParametersCount);
+        for (int parameterIndex = 0; parameterIndex < eachGroupParametersCount; parameterIndex++) {
             int parameterValueLength = payload.readInt4();
             if (-1 == parameterValueLength) {
                 result.add(null);
