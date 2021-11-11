@@ -148,11 +148,15 @@ public final class MySQLClient {
         @Override
         public void channelRead(final ChannelHandlerContext ctx, final Object msg) {
             ByteBuf byteBuf = (ByteBuf) msg;
-            results.add(byteBuf);
-//            if (results.size() > 3 && 0xfe == byteBuf.getUnsignedByte(4)) {
+            ByteBuf result = ctx.alloc().buffer(byteBuf.readableBytes() + 3);
+            result.writeMediumLE(byteBuf.readableBytes() - 1);
+            result.writeBytes(byteBuf);
+            byteBuf.release();
+            results.add(result);
+            if (results.size() > 3 && 0xfe == result.getUnsignedByte(4)) {
                 callback.accept(results);
                 ctx.pipeline().remove(this);
-//            }
+            }
         }
     }
     
@@ -160,7 +164,8 @@ public final class MySQLClient {
     public void executePreparedStatement(final MySQLComStmtExecutePacket packet, final Consumer<List<ByteBuf>> callback) {
         String sql = packet.getSql();
         packet.setStatementId(preparedStatements.get(sql));
-        channel.pipeline().addFirst("executePreparedStatement", new MySQLPreparedStatementExecuteInboundHandler(callback));
+//        channel.pipeline().addFirst("executePreparedStatement", new MySQLPreparedStatementExecuteInboundHandler(callback));
+        channel.pipeline().addAfter("PacketCodec", "executePreparedStatement", new MySQLPreparedStatementExecuteInboundHandler(callback));
         channel.writeAndFlush(packet);
     }
     
