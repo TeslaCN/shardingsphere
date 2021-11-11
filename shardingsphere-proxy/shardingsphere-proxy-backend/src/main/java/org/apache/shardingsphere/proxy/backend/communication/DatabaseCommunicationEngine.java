@@ -17,6 +17,7 @@
 
 package org.apache.shardingsphere.proxy.backend.communication;
 
+import io.netty.channel.Channel;
 import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.infra.binder.LogicSQL;
 import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
@@ -44,6 +45,7 @@ import org.apache.shardingsphere.proxy.backend.response.header.query.QueryRespon
 import org.apache.shardingsphere.proxy.backend.response.header.query.impl.QueryHeader;
 import org.apache.shardingsphere.proxy.backend.response.header.query.impl.QueryHeaderBuilder;
 import org.apache.shardingsphere.proxy.backend.response.header.update.UpdateResponseHeader;
+import org.apache.shardingsphere.scaling.mysql.client.MySQLClient;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -52,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
@@ -82,10 +85,19 @@ public final class DatabaseCommunicationEngine {
     
     private final Collection<ResultSet> cachedResultSets = new CopyOnWriteArrayList<>();
     
+    private final BackendConnection backendConnection;
+    
+    private final Channel channel;
+    
+    private final Map<String, MySQLClient> clients;
+    
     public DatabaseCommunicationEngine(final String driverType, final ShardingSphereMetaData metaData, final LogicSQL logicSQL, final BackendConnection backendConnection) {
         this.driverType = driverType;
         this.metaData = metaData;
         this.logicSQL = logicSQL;
+        this.backendConnection = backendConnection;
+        channel = backendConnection.getChannel();
+        clients = backendConnection.getClients();
         proxySQLExecutor = new ProxySQLExecutor(driverType, backendConnection, this);
         kernelProcessor = new KernelProcessor();
         proxyLockEngine = new ProxyLockEngine(proxySQLExecutor, new MetaDataRefreshEngine(metaData,
@@ -122,6 +134,7 @@ public final class DatabaseCommunicationEngine {
         if (executionContext.getExecutionUnits().isEmpty()) {
             return new UpdateResponseHeader(executionContext.getSqlStatementContext().getSqlStatement());
         }
+        backendConnection.makeSureClientsReady();
         proxySQLExecutor.checkExecutePrerequisites(executionContext);
         Collection<ExecuteResult> executeResults = proxyLockEngine.execute(executionContext);
         ExecuteResult executeResultSample = executeResults.iterator().next();

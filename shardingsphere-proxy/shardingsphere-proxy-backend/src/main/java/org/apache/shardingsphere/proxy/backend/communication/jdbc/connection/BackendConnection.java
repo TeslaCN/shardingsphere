@@ -20,10 +20,12 @@ package org.apache.shardingsphere.proxy.backend.communication.jdbc.connection;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
-import io.netty.util.AttributeMap;
+import com.zaxxer.hikari.HikariDataSource;
+import io.netty.channel.Channel;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import org.apache.shardingsphere.db.protocol.parameter.TypeUnspecifiedSQLParameter;
 import org.apache.shardingsphere.infra.database.type.DatabaseType;
 import org.apache.shardingsphere.infra.exception.ShardingSphereException;
@@ -31,16 +33,20 @@ import org.apache.shardingsphere.infra.executor.sql.execute.engine.ConnectionMod
 import org.apache.shardingsphere.infra.executor.sql.federate.FederationExecutor;
 import org.apache.shardingsphere.infra.executor.sql.prepare.driver.jdbc.ExecutorJDBCManager;
 import org.apache.shardingsphere.infra.executor.sql.prepare.driver.jdbc.StatementOption;
+import org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
 import org.apache.shardingsphere.infra.metadata.user.Grantee;
 import org.apache.shardingsphere.proxy.backend.communication.DatabaseCommunicationEngine;
 import org.apache.shardingsphere.proxy.backend.communication.SQLStatementSchemaHolder;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.statement.StatementMemoryStrictlyFetchSizeSetter;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.transaction.TransactionStatus;
 import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
+import org.apache.shardingsphere.scaling.mysql.client.ConnectInfo;
+import org.apache.shardingsphere.scaling.mysql.client.MySQLClient;
 import org.apache.shardingsphere.spi.ShardingSphereServiceLoader;
 import org.apache.shardingsphere.spi.typed.TypedSPI;
 import org.apache.shardingsphere.transaction.core.TransactionType;
 
+import java.net.URI;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -49,6 +55,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -92,13 +99,40 @@ public final class BackendConnection implements ExecutorJDBCManager {
     
     private final Map<String, StatementMemoryStrictlyFetchSizeSetter> fetchSizeSetters;
     
-    private final AttributeMap attributeMap;
+    private final Channel channel;
     
-    public BackendConnection(final TransactionType initialTransactionType, final AttributeMap attributeMap) {
+    private final Map<String, MySQLClient> clients = new HashMap<>();
+    
+    private boolean clientsReady;
+    
+    public BackendConnection(final TransactionType initialTransactionType, final Channel channel) {
         transactionStatus = new TransactionStatus(initialTransactionType);
         fetchSizeSetters = ShardingSphereServiceLoader.getSingletonServiceInstances(StatementMemoryStrictlyFetchSizeSetter.class).stream()
                 .collect(Collectors.toMap(TypedSPI::getType, Function.identity()));
-        this.attributeMap = attributeMap;
+        this.channel = channel;
+    }
+    
+    @SneakyThrows
+    public void makeSureClientsReady() {
+        if (clientsReady) {
+            return;
+        }
+        ShardingSphereMetaData metaData = ProxyContext.getInstance().getMetaData(getSchemaName());
+        Thread t = new Thread(() -> {
+            metaData.getResource().getDataSources().entrySet().stream().filter(entry -> !clients.containsKey(entry.getKey())).forEach(entry -> {
+                HikariDataSource value = (HikariDataSource) entry.getValue();
+                URI uri = URI.create(value.getJdbcUrl().replace("jdbc:", ""));
+                clients.computeIfAbsent(entry.getKey(), __ -> {
+                    ConnectInfo connectInfo = new ConnectInfo(0, uri.getPath().replace("/", ""), uri.getHost(), uri.getPort(), value.getUsername(), value.getPassword());
+                    MySQLClient client = new MySQLClient(connectInfo);
+                    client.connect(channel.eventLoop());
+                    return client;
+                });
+            });
+        });
+        t.start();
+        t.join();
+        clientsReady = true;
     }
     
     /**

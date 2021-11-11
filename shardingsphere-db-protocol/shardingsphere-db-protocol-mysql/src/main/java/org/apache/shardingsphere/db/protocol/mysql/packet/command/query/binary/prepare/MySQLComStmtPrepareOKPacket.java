@@ -28,11 +28,11 @@ import org.apache.shardingsphere.db.protocol.mysql.payload.MySQLPacketPayload;
  * @see <a href="https://dev.mysql.com/doc/internals/en/com-stmt-prepare-response.html#packet-COM_STMT_PREPARE_OK">COM_STMT_PREPARE_OK</a>
  */
 @RequiredArgsConstructor
+@Getter
 public final class MySQLComStmtPrepareOKPacket implements MySQLPacket {
     
     private static final int STATUS = 0x00;
     
-    @Getter
     private final int sequenceId;
     
     private final int statementId;
@@ -42,6 +42,15 @@ public final class MySQLComStmtPrepareOKPacket implements MySQLPacket {
     private final int parameterCount;
     
     private final int warningCount;
+    
+    public MySQLComStmtPrepareOKPacket(final MySQLPacketPayload payload) {
+        sequenceId = payload.readInt1();
+        statementId = payload.readInt4();
+        columnCount = payload.readInt2();
+        parameterCount = payload.readInt2();
+        payload.skipReserved(1);
+        warningCount = payload.readInt2();
+    }
     
     @Override
     public void write(final MySQLPacketPayload payload) {

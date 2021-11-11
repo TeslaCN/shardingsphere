@@ -17,6 +17,7 @@
 
 package org.apache.shardingsphere.proxy.frontend.mysql.command.query.binary.prepare;
 
+import io.netty.channel.Channel;
 import org.apache.shardingsphere.db.protocol.mysql.constant.MySQLBinaryColumnType;
 import org.apache.shardingsphere.db.protocol.mysql.constant.MySQLConstants;
 import org.apache.shardingsphere.db.protocol.mysql.packet.command.query.MySQLColumnDefinition41Packet;
@@ -60,7 +61,7 @@ public final class MySQLComStmtPrepareExecutor implements CommandExecutor {
     public MySQLComStmtPrepareExecutor(final MySQLComStmtPreparePacket packet, final BackendConnection backendConnection) {
         this.packet = packet;
         this.backendConnection = backendConnection;
-        characterSet = backendConnection.getAttributeMap().attr(MySQLConstants.MYSQL_CHARACTER_SET_ATTRIBUTE_KEY).get().getId();
+        characterSet = backendConnection.getChannel().attr(MySQLConstants.MYSQL_CHARACTER_SET_ATTRIBUTE_KEY).get().getId();
     }
     
     @Override
@@ -75,7 +76,16 @@ public final class MySQLComStmtPrepareExecutor implements CommandExecutor {
         int parameterCount = sqlStatement.getParameterCount();
         int projectionCount = getProjectionCount(sqlStatement);
         int statementId = PREPARED_STATEMENT_REGISTRY.register(packet.getSql(), parameterCount);
-        return createPackets(statementId, projectionCount, parameterCount);
+        backendConnection.makeSureClientsReady();
+        backendConnection.getClients().values().forEach(client -> {
+            client.prepareStatement(packet.getSql(), () -> {
+                Collection<DatabasePacket<?>> packets = createPackets(statementId, projectionCount, parameterCount);
+                Channel channel = backendConnection.getChannel();
+                packets.forEach(channel::write);
+                channel.flush();
+            });
+        });
+        return Collections.emptyList();
     }
     
     private int getProjectionCount(final SQLStatement sqlStatement) {

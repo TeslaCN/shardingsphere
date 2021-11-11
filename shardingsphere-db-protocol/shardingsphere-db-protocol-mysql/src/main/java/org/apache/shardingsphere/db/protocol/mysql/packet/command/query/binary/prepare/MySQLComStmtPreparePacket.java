@@ -39,6 +39,11 @@ public final class MySQLComStmtPreparePacket extends MySQLCommandPacket {
         sql = payload.readStringEOF();
     }
     
+    public MySQLComStmtPreparePacket(final String sql) {
+        super(MySQLCommandPacketType.COM_STMT_PREPARE);
+        this.sql = sql;
+    }
+    
     @Override
     public void doWrite(final MySQLPacketPayload payload) {
         payload.writeStringEOF(sql);

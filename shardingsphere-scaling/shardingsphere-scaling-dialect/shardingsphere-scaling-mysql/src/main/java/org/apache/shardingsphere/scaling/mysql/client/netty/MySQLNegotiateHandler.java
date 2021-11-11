@@ -51,6 +51,8 @@ public final class MySQLNegotiateHandler extends ChannelInboundHandlerAdapter {
     
     private static final int PERFORM_FULL_AUTHENTICATION = 4;
     
+    private final String database;
+    
     private final String username;
     
     private final String password;
@@ -71,7 +73,7 @@ public final class MySQLNegotiateHandler extends ChannelInboundHandlerAdapter {
             MySQLHandshakeResponse41Packet handshakeResponsePacket = new MySQLHandshakeResponse41Packet(1, MAX_PACKET_SIZE, CHARACTER_SET, username);
             handshakeResponsePacket.setAuthResponse(generateAuthResponse(handshake.getAuthPluginData().getAuthenticationPluginData()));
             handshakeResponsePacket.setCapabilityFlags(generateClientCapability());
-            handshakeResponsePacket.setDatabase("mysql");
+            handshakeResponsePacket.setDatabase(database);
             handshakeResponsePacket.setAuthPluginName(MySQLAuthenticationMethod.SECURE_PASSWORD_AUTHENTICATION);
             ctx.channel().writeAndFlush(handshakeResponsePacket);
             serverInfo = new ServerInfo();

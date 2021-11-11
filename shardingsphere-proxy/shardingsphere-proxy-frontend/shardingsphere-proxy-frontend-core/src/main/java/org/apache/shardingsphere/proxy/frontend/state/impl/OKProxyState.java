@@ -22,8 +22,6 @@ import org.apache.shardingsphere.infra.config.properties.ConfigurationPropertyKe
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.BackendConnection;
 import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 import org.apache.shardingsphere.proxy.frontend.command.CommandExecutorTask;
-import org.apache.shardingsphere.proxy.frontend.executor.ConnectionThreadExecutorGroup;
-import org.apache.shardingsphere.proxy.frontend.executor.UserExecutorGroup;
 import org.apache.shardingsphere.proxy.frontend.spi.DatabaseProtocolFrontendEngine;
 import org.apache.shardingsphere.proxy.frontend.state.ProxyState;
 import org.apache.shardingsphere.transaction.core.TransactionType;
@@ -44,17 +42,18 @@ public final class OKProxyState implements ProxyState {
     
     private ExecutorService determineSuitableExecutorService(final ChannelHandlerContext context, final DatabaseProtocolFrontendEngine databaseProtocolFrontendEngine,
                                                              final BackendConnection backendConnection) {
-        ExecutorService result;
-        if (requireOccupyThreadForConnection(backendConnection)) {
-            result = ConnectionThreadExecutorGroup.getInstance().get(backendConnection.getConnectionId());
-        } else if (isPreferNettyEventLoop()) {
-            result = context.executor();
-        } else if (databaseProtocolFrontendEngine.getFrontendContext().isRequiredSameThreadForConnection()) {
-            result = ConnectionThreadExecutorGroup.getInstance().get(backendConnection.getConnectionId());
-        } else {
-            result = UserExecutorGroup.getInstance().getExecutorService();
-        }
-        return result;
+        return context.channel().eventLoop();
+//        ExecutorService result;
+//        if (requireOccupyThreadForConnection(backendConnection)) {
+//            result = ConnectionThreadExecutorGroup.getInstance().get(backendConnection.getConnectionId());
+//        } else if (isPreferNettyEventLoop()) {
+//            result = context.executor();
+//        } else if (databaseProtocolFrontendEngine.getFrontendContext().isRequiredSameThreadForConnection()) {
+//            result = ConnectionThreadExecutorGroup.getInstance().get(backendConnection.getConnectionId());
+//        } else {
+//            result = UserExecutorGroup.getInstance().getExecutorService();
+//        }
+//        return result;
     }
     
     private boolean requireOccupyThreadForConnection(final BackendConnection backendConnection) {

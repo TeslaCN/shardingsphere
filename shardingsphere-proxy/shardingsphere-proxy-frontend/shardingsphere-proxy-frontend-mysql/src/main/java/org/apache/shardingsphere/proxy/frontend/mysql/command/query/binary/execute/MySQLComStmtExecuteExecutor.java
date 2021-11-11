@@ -17,6 +17,7 @@
 
 package org.apache.shardingsphere.proxy.frontend.mysql.command.query.binary.execute;
 
+import io.netty.channel.Channel;
 import lombok.Getter;
 import org.apache.shardingsphere.db.protocol.binary.BinaryCell;
 import org.apache.shardingsphere.db.protocol.binary.BinaryRow;
@@ -41,10 +42,9 @@ import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.Bac
 import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 import org.apache.shardingsphere.proxy.backend.response.data.QueryResponseRow;
 import org.apache.shardingsphere.proxy.backend.response.data.impl.BinaryQueryResponseCell;
-import org.apache.shardingsphere.proxy.backend.response.header.ResponseHeader;
 import org.apache.shardingsphere.proxy.backend.response.header.query.QueryResponseHeader;
 import org.apache.shardingsphere.proxy.backend.response.header.update.UpdateResponseHeader;
-import org.apache.shardingsphere.proxy.frontend.command.executor.QueryCommandExecutor;
+import org.apache.shardingsphere.proxy.frontend.command.executor.CommandExecutor;
 import org.apache.shardingsphere.proxy.frontend.command.executor.ResponseType;
 import org.apache.shardingsphere.proxy.frontend.mysql.command.query.builder.ResponsePacketBuilder;
 import org.apache.shardingsphere.sql.parser.sql.common.statement.SQLStatement;
@@ -58,11 +58,15 @@ import java.util.stream.Collectors;
 /**
  * COM_STMT_EXECUTE command executor for MySQL.
  */
-public final class MySQLComStmtExecuteExecutor implements QueryCommandExecutor {
+public final class MySQLComStmtExecuteExecutor implements CommandExecutor {
     
     private final DatabaseCommunicationEngine databaseCommunicationEngine;
     
     private final int characterSet;
+    
+    private final BackendConnection backendConnection;
+    
+    private final MySQLComStmtExecutePacket packet;
     
     @Getter
     private volatile ResponseType responseType;
@@ -70,6 +74,8 @@ public final class MySQLComStmtExecuteExecutor implements QueryCommandExecutor {
     private int currentSequenceId;
     
     public MySQLComStmtExecuteExecutor(final MySQLComStmtExecutePacket packet, final BackendConnection backendConnection) {
+        this.backendConnection = backendConnection;
+        this.packet = packet;
         String schemaName = backendConnection.getSchemaName();
         MetaDataContexts metaDataContexts = ProxyContext.getInstance().getContextManager().getMetaDataContexts();
         ShardingSphereSQLParserEngine sqlStatementParserEngine = new ShardingSphereSQLParserEngine(DatabaseTypeRegistry.getTrunkDatabaseTypeName(
@@ -83,7 +89,7 @@ public final class MySQLComStmtExecuteExecutor implements QueryCommandExecutor {
         }
         SQLCheckEngine.check(sqlStatement, Collections.emptyList(), getRules(schemaName), schemaName, metaDataContexts.getMetaDataMap(), backendConnection.getGrantee());
         databaseCommunicationEngine = DatabaseCommunicationEngineFactory.getInstance().newBinaryProtocolInstance(sqlStatementContext, packet.getSql(), packet.getParameters(), backendConnection);
-        characterSet = backendConnection.getAttributeMap().attr(MySQLConstants.MYSQL_CHARACTER_SET_ATTRIBUTE_KEY).get().getId();
+        characterSet = backendConnection.getChannel().attr(MySQLConstants.MYSQL_CHARACTER_SET_ATTRIBUTE_KEY).get().getId();
     }
     
     private static Collection<ShardingSphereRule> getRules(final String schemaName) {
@@ -95,8 +101,16 @@ public final class MySQLComStmtExecuteExecutor implements QueryCommandExecutor {
     
     @Override
     public Collection<DatabasePacket<?>> execute() throws SQLException {
-        ResponseHeader responseHeader = databaseCommunicationEngine.execute();
-        return responseHeader instanceof QueryResponseHeader ? processQuery((QueryResponseHeader) responseHeader) : processUpdate((UpdateResponseHeader) responseHeader);
+        backendConnection.getClients().values().forEach(client -> {
+            client.executePreparedStatement(packet, results -> {
+                Channel channel = backendConnection.getChannel();
+                results.forEach(channel::write);
+                channel.flush();
+            });
+        });   
+        return Collections.emptyList();
+//        ResponseHeader responseHeader = databaseCommunicationEngine.execute();
+//        return responseHeader instanceof QueryResponseHeader ? processQuery((QueryResponseHeader) responseHeader) : processUpdate((UpdateResponseHeader) responseHeader);
     }
     
     private Collection<DatabasePacket<?>> processQuery(final QueryResponseHeader queryResponseHeader) {
@@ -111,12 +125,12 @@ public final class MySQLComStmtExecuteExecutor implements QueryCommandExecutor {
         return ResponsePacketBuilder.buildUpdateResponsePackets(updateResponseHeader);
     }
     
-    @Override
+//    @Override
     public boolean next() throws SQLException {
         return databaseCommunicationEngine.next();
     }
     
-    @Override
+//    @Override
     public MySQLPacket getQueryRowPacket() throws SQLException {
         QueryResponseRow queryResponseRow = databaseCommunicationEngine.getQueryResponseRow();
         return new MySQLBinaryResultSetRowPacket(++currentSequenceId, createBinaryRow(queryResponseRow));

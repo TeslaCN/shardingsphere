@@ -56,4 +56,9 @@ public final class PacketCodec extends ByteToMessageCodec<DatabasePacket<?>> {
             log.debug("Write to client {} :\n{}", context.channel().id().asShortText(), ByteBufUtil.prettyHexDump(out));
         }
     }
+    
+    @Override
+    public boolean acceptOutboundMessage(final Object msg) {
+        return msg instanceof DatabasePacket;
+    }
 }

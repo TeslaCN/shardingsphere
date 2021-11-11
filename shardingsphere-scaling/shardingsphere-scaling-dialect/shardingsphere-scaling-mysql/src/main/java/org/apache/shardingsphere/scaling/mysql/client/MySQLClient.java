@@ -18,23 +18,30 @@
 package org.apache.shardingsphere.scaling.mysql.client;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.Epoll;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultPromise;
 import io.netty.util.concurrent.Promise;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.shardingsphere.db.protocol.codec.PacketCodec;
 import org.apache.shardingsphere.db.protocol.mysql.codec.MySQLPacketCodecEngine;
 import org.apache.shardingsphere.db.protocol.mysql.packet.command.binlog.MySQLComBinlogDumpCommandPacket;
 import org.apache.shardingsphere.db.protocol.mysql.packet.command.binlog.MySQLComRegisterSlaveCommandPacket;
+import org.apache.shardingsphere.db.protocol.mysql.packet.command.query.binary.execute.MySQLComStmtExecutePacket;
+import org.apache.shardingsphere.db.protocol.mysql.packet.command.query.binary.prepare.MySQLComStmtPreparePacket;
 import org.apache.shardingsphere.db.protocol.mysql.packet.command.query.text.query.MySQLComQueryPacket;
 import org.apache.shardingsphere.db.protocol.mysql.packet.generic.MySQLErrPacket;
 import org.apache.shardingsphere.db.protocol.mysql.packet.generic.MySQLOKPacket;
@@ -46,10 +53,15 @@ import org.apache.shardingsphere.scaling.mysql.client.netty.MySQLNegotiateHandle
 import org.apache.shardingsphere.scaling.mysql.client.netty.MySQLNegotiatePackageDecoder;
 
 import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * MySQL Connector.
@@ -70,28 +82,86 @@ public final class MySQLClient {
     
     private ServerInfo serverInfo;
     
+    private final Map<String, Integer> preparedStatements = new HashMap<>(1024);
+    
     /**
      * Connect to MySQL.
      */
-    public synchronized void connect() {
-        eventLoopGroup = new NioEventLoopGroup(1);
-        responseCallback = new DefaultPromise<>(eventLoopGroup.next());
+    public synchronized void connect(final EventLoopGroup eventLoopGroup) {
+//        this.eventLoopGroup = eventLoopGroup;
+        this.eventLoopGroup = Epoll.isAvailable() ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
+        responseCallback = new DefaultPromise<>(this.eventLoopGroup.next());
         channel = new Bootstrap()
-                .group(eventLoopGroup)
-                .channel(NioSocketChannel.class)
+                .group(this.eventLoopGroup)
+                .channel(Epoll.isAvailable() ? EpollSocketChannel.class : NioSocketChannel.class)
                 .option(ChannelOption.AUTO_READ, true)
                 .handler(new ChannelInitializer<SocketChannel>() {
+                    
                     @Override
                     protected void initChannel(final SocketChannel socketChannel) {
                         socketChannel.pipeline().addLast(new ChannelAttrInitializer());
-                        socketChannel.pipeline().addLast(new PacketCodec(new MySQLPacketCodecEngine()));
+                        socketChannel.pipeline().addLast("PacketCodec", new PacketCodec(new MySQLPacketCodecEngine()));
                         socketChannel.pipeline().addLast(new MySQLNegotiatePackageDecoder());
                         socketChannel.pipeline().addLast(new MySQLCommandPacketDecoder());
-                        socketChannel.pipeline().addLast(new MySQLNegotiateHandler(connectInfo.getUsername(), connectInfo.getPassword(), responseCallback));
-                        socketChannel.pipeline().addLast(new MySQLCommandResponseHandler());
+                        socketChannel.pipeline().addLast(new MySQLNegotiateHandler(connectInfo.getDatabase(), connectInfo.getUsername(), connectInfo.getPassword(), responseCallback));
+//                        socketChannel.pipeline().addLast(new MySQLCommandResponseHandler());
                     }
                 }).connect(connectInfo.getHost(), connectInfo.getPort()).channel();
         serverInfo = waitExpectedResponse(ServerInfo.class);
+    }
+    
+    @RequiredArgsConstructor
+    private static class MySQLPreparedOKInboundHandler extends ChannelInboundHandlerAdapter {
+        
+        private final String sql;
+        
+        private final Map<String, Integer> preparedStatements;
+        
+        private final Runnable callback;
+        
+        @Override
+        public void channelRead(final ChannelHandlerContext ctx, final Object msg) {
+            ByteBuf byteBuf = (ByteBuf) msg;
+            int statementId = byteBuf.getIntLE(2);
+            preparedStatements.put(sql, statementId);
+            ctx.executor().execute(callback);
+            ctx.pipeline().remove(this);
+        }
+    }
+    
+    @SneakyThrows
+    public void prepareStatement(final String sql, final Runnable callback) {
+        if (!preparedStatements.containsKey(sql)) {
+            MySQLComStmtPreparePacket preparePacket = new MySQLComStmtPreparePacket(sql);
+            channel.pipeline().addAfter("PacketCodec", "PreparedOkHandler", new MySQLPreparedOKInboundHandler(sql, preparedStatements, callback));
+            channel.writeAndFlush(preparePacket);
+        }
+    }
+    
+    @RequiredArgsConstructor
+    private static class MySQLPreparedStatementExecuteInboundHandler extends ChannelInboundHandlerAdapter {
+        
+        private final Consumer<List<ByteBuf>> callback;
+        
+        private final List<ByteBuf> results = new LinkedList<>();
+    
+        @Override
+        public void channelRead(final ChannelHandlerContext ctx, final Object msg) {
+            ByteBuf byteBuf = (ByteBuf) msg;
+            results.add(byteBuf);
+//            if (results.size() > 3 && 0xfe == byteBuf.getUnsignedByte(4)) {
+                callback.accept(results);
+                ctx.pipeline().remove(this);
+//            }
+        }
+    }
+    
+    @SneakyThrows
+    public void executePreparedStatement(final MySQLComStmtExecutePacket packet, final Consumer<List<ByteBuf>> callback) {
+        String sql = packet.getSql();
+        packet.setStatementId(preparedStatements.get(sql));
+        channel.pipeline().addFirst("executePreparedStatement", new MySQLPreparedStatementExecuteInboundHandler(callback));
+        channel.writeAndFlush(packet);
     }
     
     /**
@@ -262,7 +332,7 @@ public final class MySQLClient {
         private void reconnect() {
             log.info("reconnect mysql client.");
             closeOldChannel();
-            connect();
+            connect(eventLoopGroup);
             subscribe(lastBinlogEvent.getFileName(), lastBinlogEvent.getPosition());
         }
         

@@ -25,6 +25,8 @@ import lombok.RequiredArgsConstructor;
 public final class ConnectInfo {
 
     private final int serverId;
+    
+    private final String database;
 
     private final String host;
 
