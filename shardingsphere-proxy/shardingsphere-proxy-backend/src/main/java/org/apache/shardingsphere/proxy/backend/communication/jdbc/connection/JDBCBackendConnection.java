@@ -59,7 +59,7 @@ import java.util.stream.Collectors;
  */
 @Getter
 @Setter
-public final class JDBCBackendConnection implements BackendConnection, ExecutorJDBCManager {
+public final class JDBCBackendConnection implements BackendConnection<Void>, ExecutorJDBCManager {
     
     static {
         ShardingSphereServiceLoader.register(StatementMemoryStrictlyFetchSizeSetter.class);
@@ -75,7 +75,7 @@ public final class JDBCBackendConnection implements BackendConnection, ExecutorJ
     
     private final Collection<DatabaseCommunicationEngine> inUseDatabaseCommunicationEngines = Collections.newSetFromMap(new ConcurrentHashMap<>(64));
     
-    private final Collection<ConnectionPostProcessor> connectionPostProcessors = new LinkedList<>();
+    private final Collection<ConnectionPostProcessor<Connection>> connectionPostProcessors = new LinkedList<>();
     
     private final ResourceLock resourceLock = new ResourceLock();
     
@@ -226,7 +226,7 @@ public final class JDBCBackendConnection implements BackendConnection, ExecutorJ
     }
     
     @Override
-    public void prepareForTaskExecution() throws BackendConnectionException {
+    public Void prepareForTaskExecution() throws BackendConnectionException {
         if (!connectionSession.getTransactionStatus().isInConnectionHeldTransaction()) {
             connectionStatus.waitUntilConnectionRelease();
             connectionStatus.switchToUsing();
@@ -239,10 +239,11 @@ public final class JDBCBackendConnection implements BackendConnection, ExecutorJ
                 throw new BackendConnectionException(ex);
             }
         }
+        return null;
     }
     
     @Override
-    public void closeExecutionResources() throws BackendConnectionException {
+    public Void closeExecutionResources() throws BackendConnectionException {
         Collection<Exception> result = new LinkedList<>();
         result.addAll(closeDatabaseCommunicationEngines(false));
         result.addAll(closeFederationExecutor());
@@ -252,16 +253,17 @@ public final class JDBCBackendConnection implements BackendConnection, ExecutorJ
             connectionStatus.switchToReleased();
         }
         if (result.isEmpty()) {
-            return;
+            return null;
         }
         throw new BackendConnectionException(result);
     }
     
     @Override
-    public void closeAllResources() {
+    public Void closeAllResources() {
         closeDatabaseCommunicationEngines(true);
         closeConnections(true);
         closeFederationExecutor();
+        return null;
     }
     
     /**

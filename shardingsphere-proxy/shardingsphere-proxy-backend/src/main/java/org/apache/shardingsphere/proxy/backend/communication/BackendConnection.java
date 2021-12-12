@@ -22,8 +22,10 @@ import org.apache.shardingsphere.proxy.backend.session.ConnectionSession;
 
 /**
  * Backend connection for Proxy.
+ *
+ * @param <T> return type of methods
  */
-public interface BackendConnection {
+public interface BackendConnection<T> {
     
     /**
      * Get connection session of backend connection.
@@ -37,19 +39,19 @@ public interface BackendConnection {
      *
      * @throws BackendConnectionException backend connection exception
      */
-    void prepareForTaskExecution() throws BackendConnectionException;
+    T prepareForTaskExecution() throws BackendConnectionException;
     
     /**
      * Close resources used in execution.
      *
      * @throws BackendConnectionException backend connection exception
      */
-    void closeExecutionResources() throws BackendConnectionException;
+    T closeExecutionResources() throws BackendConnectionException;
     
     /**
      * Close all resources.
      * 
      * @throws BackendConnectionException backend connection exception
      */
-    void closeAllResources() throws BackendConnectionException;
+    T closeAllResources() throws BackendConnectionException;
 }

@@ -15,22 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.shardingsphere.proxy.backend.text.data;
+package org.apache.shardingsphere.infra.executor.sql.prepare.driver.vertx.builder;
 
 import io.vertx.core.Future;
-import org.apache.shardingsphere.proxy.backend.response.header.ResponseHeader;
-import org.apache.shardingsphere.proxy.backend.text.TextProtocolBackendHandler;
+import io.vertx.sqlclient.SqlConnection;
+import org.apache.shardingsphere.infra.executor.sql.execute.engine.driver.vertx.VertxExecutionUnit;
+import org.apache.shardingsphere.infra.executor.sql.prepare.driver.SQLExecutionUnitBuilder;
+import org.apache.shardingsphere.infra.executor.sql.prepare.driver.vertx.ExecutorVertxManager;
+import org.apache.shardingsphere.infra.executor.sql.prepare.driver.vertx.VertxExecutionContext;
 
-/**
- * Database backend handler.
- */
-public interface DatabaseBackendHandler extends TextProtocolBackendHandler {
-    
-    /**
-     * Handlers which communicate with database must implement async execution.
-     *
-     * @return future of response header
-     */
-    @Override
-    Future<ResponseHeader> executeFuture();
+public interface VertxExecutionUnitBuilder extends SQLExecutionUnitBuilder<VertxExecutionUnit, ExecutorVertxManager, Future<SqlConnection>, VertxExecutionContext> {
 }
