@@ -15,22 +15,26 @@
  * limitations under the License.
  */
 
-package org.apache.shardingsphere.proxy.backend.text.data;
+package org.apache.shardingsphere.proxy.frontend.command.executor;
 
 import io.vertx.core.Future;
-import org.apache.shardingsphere.proxy.backend.response.header.ResponseHeader;
-import org.apache.shardingsphere.proxy.backend.text.TextProtocolBackendHandler;
+import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
 
-/**
- * Database backend handler.
- */
-public interface DatabaseBackendHandler extends TextProtocolBackendHandler {
+import java.util.Collection;
+
+public interface ReactiveCommandExecutor {
     
     /**
-     * Handlers which communicate with database must implement async execution.
+     * Execute command and return future.
      *
-     * @return future of response header
+     * @return future
      */
-    @Override
-    Future<ResponseHeader> executeFuture();
+    Future<Collection<DatabasePacket<?>>> executeFuture();
+    
+    /**
+     * Close future.
+     *
+     * @return close future
+     */
+    Future<Void> closeFuture();
 }
