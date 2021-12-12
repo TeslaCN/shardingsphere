@@ -17,11 +17,11 @@
 
 package org.apache.shardingsphere.proxy.backend.text.data.impl;
 
+import io.vertx.core.Future;
 import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
 import org.apache.shardingsphere.proxy.backend.communication.DatabaseCommunicationEngine;
 import org.apache.shardingsphere.proxy.backend.communication.DatabaseCommunicationEngineFactory;
-import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.JDBCBackendConnection;
 import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 import org.apache.shardingsphere.proxy.backend.exception.RuleNotExistedException;
 import org.apache.shardingsphere.proxy.backend.response.header.ResponseHeader;
@@ -49,11 +49,21 @@ public final class SchemaAssignedDatabaseBackendHandler implements DatabaseBacke
     
     @Override
     public ResponseHeader execute() throws SQLException {
+        prepareDatabaseCommunicationEngine();
+        return databaseCommunicationEngine.execute();
+    }
+    
+    @Override
+    public Future<ResponseHeader> executeFuture() {
+        prepareDatabaseCommunicationEngine();
+        return databaseCommunicationEngine.executeFuture();
+    }
+    
+    private void prepareDatabaseCommunicationEngine() {
         if (!ProxyContext.getInstance().getMetaData(connectionSession.getSchemaName()).isComplete()) {
             throw new RuleNotExistedException();
         }
-        databaseCommunicationEngine = databaseCommunicationEngineFactory.newTextProtocolInstance(sqlStatementContext, sql, (JDBCBackendConnection) connectionSession.getBackendConnection());
-        return databaseCommunicationEngine.execute();
+        databaseCommunicationEngine = databaseCommunicationEngineFactory.newTextProtocolInstance(sqlStatementContext, sql, connectionSession.getBackendConnection());
     }
     
     @Override
