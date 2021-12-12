@@ -17,6 +17,7 @@
 
 package org.apache.shardingsphere.proxy.backend.communication;
 
+import io.vertx.core.Future;
 import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.infra.binder.LogicSQL;
 import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
@@ -48,6 +49,7 @@ import org.apache.shardingsphere.mode.metadata.MetaDataContexts;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.JDBCBackendConnection;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.executor.callback.ProxyJDBCExecutorCallback;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.executor.callback.ProxyJDBCExecutorCallbackFactory;
+import org.apache.shardingsphere.proxy.backend.communication.vertx.VertxBackendConnection;
 import org.apache.shardingsphere.proxy.backend.context.BackendExecutorContext;
 import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 import org.apache.shardingsphere.proxy.backend.response.data.QueryResponseCell;
@@ -90,6 +92,8 @@ public final class DatabaseCommunicationEngine {
     
     private final ProxySQLExecutor proxySQLExecutor;
     
+    private final ReactiveProxySQLExecutor reactiveProxySQLExecutor;
+    
     private final KernelProcessor kernelProcessor;
     
     private final MetaDataRefreshEngine metadataRefreshEngine;
@@ -106,12 +110,16 @@ public final class DatabaseCommunicationEngine {
     
     private final JDBCBackendConnection backendConnection;
     
+    private final VertxBackendConnection vertxBackendConnection;
+    
     public DatabaseCommunicationEngine(final String driverType, final ShardingSphereMetaData metaData, final LogicSQL logicSQL, final JDBCBackendConnection backendConnection) {
         this.driverType = driverType;
         this.metaData = metaData;
         this.logicSQL = logicSQL;
         this.backendConnection = backendConnection;
+        vertxBackendConnection = null;
         proxySQLExecutor = new ProxySQLExecutor(driverType, backendConnection, this);
+        reactiveProxySQLExecutor = null;
         kernelProcessor = new KernelProcessor();
         String schemaName = backendConnection.getConnectionSession().getSchemaName();
         metadataRefreshEngine = new MetaDataRefreshEngine(metaData,
@@ -119,8 +127,24 @@ public final class DatabaseCommunicationEngine {
                 ProxyContext.getInstance().getContextManager().getMetaDataContexts().getOptimizerContext().getPlannerContexts(),
                 ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps());
         MetaDataContexts metaDataContexts = ProxyContext.getInstance().getContextManager().getMetaDataContexts();
-        federationExecutor = FederationExecutorFactory.newInstance(schemaName, metaDataContexts.getOptimizerContext(), 
+        federationExecutor = FederationExecutorFactory.newInstance(schemaName, metaDataContexts.getOptimizerContext(),
                 metaDataContexts.getProps(), new JDBCExecutor(BackendExecutorContext.getInstance().getExecutorEngine(), backendConnection.isSerialExecute()));
+    }
+    
+    public DatabaseCommunicationEngine(final String driverType, final ShardingSphereMetaData metaData, final LogicSQL logicSQL, final VertxBackendConnection vertxBackendConnection) {
+        this.driverType = driverType;
+        this.metaData = metaData;
+        this.logicSQL = logicSQL;
+        backendConnection = null;
+        this.vertxBackendConnection = vertxBackendConnection;
+        proxySQLExecutor = null;
+        reactiveProxySQLExecutor = new ReactiveProxySQLExecutor(vertxBackendConnection);
+        kernelProcessor = new KernelProcessor();
+        String schemaName = vertxBackendConnection.getConnectionSession().getSchemaName();
+        metadataRefreshEngine = new MetaDataRefreshEngine(metaData,
+                ProxyContext.getInstance().getContextManager().getMetaDataContexts().getOptimizerContext().getFederationMetaData().getSchemas().get(schemaName),
+                ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps());
+        federationExecutor = null;
     }
     
     /**
@@ -142,6 +166,42 @@ public final class DatabaseCommunicationEngine {
     }
     
     /**
+     * Execute future.
+     *
+     * @return Future of response
+     */
+    public Future<ResponseHeader> executeFuture() {
+        try {
+            ExecutionContext executionContext = kernelProcessor.generateExecutionContext(logicSQL, metaData, ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps());
+            // TODO move federation route logic to binder
+            if (executionContext.getRouteContext().isFederated()) {
+                MetaDataContexts metaDataContexts = ProxyContext.getInstance().getContextManager().getMetaDataContexts();
+                ResultSet resultSet = doExecuteFederation(logicSQL, metaDataContexts);
+                return Future.succeededFuture(processExecuteFederation(resultSet, metaDataContexts));
+            }
+            if (executionContext.getExecutionUnits().isEmpty()) {
+                return Future.succeededFuture(new UpdateResponseHeader(executionContext.getSqlStatementContext().getSqlStatement()));
+            }
+            reactiveProxySQLExecutor.checkExecutePrerequisites(executionContext);
+            return reactiveProxySQLExecutor.execute(executionContext).compose(result -> {
+                try {
+                    refreshMetaData(executionContext);
+                    ExecuteResult executeResultSample = result.iterator().next();
+                    return Future.succeededFuture(executeResultSample instanceof QueryResult
+                            ? processExecuteQuery(executionContext, result.stream().map(each -> (QueryResult) each).collect(Collectors.toList()), (QueryResult) executeResultSample)
+                            : processExecuteUpdate(executionContext, result.stream().map(each -> (UpdateResult) each).collect(Collectors.toList())));
+                } catch (final SQLException ex) {
+                    return Future.failedFuture(ex);
+                }
+            });
+            // CHECKSTYLE:OFF
+        } catch (final Exception ex) {
+            // CHECKSTYLE:ON
+            return Future.failedFuture(ex);
+        }
+    }
+    
+    /**
      * Execute to database.
      *
      * @return backend response
@@ -159,11 +219,12 @@ public final class DatabaseCommunicationEngine {
             return new UpdateResponseHeader(executionContext.getSqlStatementContext().getSqlStatement());
         }
         proxySQLExecutor.checkExecutePrerequisites(executionContext);
-        Collection<ExecuteResult> executeResults = doExecute(executionContext);
-        ExecuteResult executeResultSample = executeResults.iterator().next();
+        Collection<ExecuteResult> result = proxySQLExecutor.execute(executionContext);
+        refreshMetaData(executionContext);
+        ExecuteResult executeResultSample = result.iterator().next();
         return executeResultSample instanceof QueryResult
-                ? processExecuteQuery(executionContext, executeResults.stream().map(each -> (QueryResult) each).collect(Collectors.toList()), (QueryResult) executeResultSample)
-                : processExecuteUpdate(executionContext, executeResults.stream().map(each -> (UpdateResult) each).collect(Collectors.toList()));
+                ? processExecuteQuery(executionContext, result.stream().map(each -> (QueryResult) each).collect(Collectors.toList()), (QueryResult) executeResultSample)
+                : processExecuteUpdate(executionContext, result.stream().map(each -> (UpdateResult) each).collect(Collectors.toList()));
     }
     
     private ResultSet doExecuteFederation(final LogicSQL logicSQL, final MetaDataContexts metaDataContexts) throws SQLException {
@@ -191,12 +252,6 @@ public final class DatabaseCommunicationEngine {
         int maxConnectionsSizePerQuery = metaData.getProps().<Integer>getValue(ConfigurationPropertyKey.MAX_CONNECTIONS_SIZE_PER_QUERY);
         return new DriverExecutionPrepareEngine<>(driverType, maxConnectionsSizePerQuery, backendConnection, new StatementOption(isReturnGeneratedKeys),
                 metaData.getMetaData(backendConnection.getConnectionSession().getSchemaName()).getRuleMetaData().getRules());
-    }
-    
-    private Collection<ExecuteResult> doExecute(final ExecutionContext executionContext) throws SQLException {
-        Collection<ExecuteResult> result = proxySQLExecutor.execute(executionContext);
-        refreshMetaData(executionContext);
-        return result;
     }
     
     private void refreshMetaData(final ExecutionContext executionContext) throws SQLException {
@@ -291,7 +346,7 @@ public final class DatabaseCommunicationEngine {
     }
     
     private boolean isBinary() {
-        return JDBCDriverType.PREPARED_STATEMENT.equals(driverType);
+        return !JDBCDriverType.STATEMENT.equals(driverType);
     }
     
     /**
