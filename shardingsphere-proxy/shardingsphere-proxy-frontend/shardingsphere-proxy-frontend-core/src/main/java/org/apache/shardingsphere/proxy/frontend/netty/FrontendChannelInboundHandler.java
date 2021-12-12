@@ -24,8 +24,11 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.shardingsphere.db.protocol.CommonConstants;
 import org.apache.shardingsphere.db.protocol.payload.PacketPayload;
+import org.apache.shardingsphere.infra.config.properties.ConfigurationPropertyKey;
 import org.apache.shardingsphere.infra.metadata.user.Grantee;
+import org.apache.shardingsphere.proxy.backend.communication.BackendConnection;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.JDBCBackendConnection;
+import org.apache.shardingsphere.proxy.backend.communication.vertx.VertxBackendConnection;
 import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 import org.apache.shardingsphere.proxy.backend.exception.BackendConnectionException;
 import org.apache.shardingsphere.proxy.backend.session.ConnectionSession;
@@ -54,7 +57,9 @@ public final class FrontendChannelInboundHandler extends ChannelInboundHandlerAd
         this.databaseProtocolFrontendEngine = databaseProtocolFrontendEngine;
         connectionSession = new ConnectionSession(getTransactionRule().getDefaultType(), channel);
         // TODO Decouple JDBCBackendConnection from this class.
-        connectionSession.setBackendConnection(new JDBCBackendConnection(connectionSession));
+        boolean reactiveBackendEnabled = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps().getValue(ConfigurationPropertyKey.EXPERIMENTAL_REACTIVE_BACKEND_ENABLED);
+        BackendConnection backendConnection = reactiveBackendEnabled ? new VertxBackendConnection(connectionSession) : new JDBCBackendConnection(connectionSession);
+        connectionSession.setBackendConnection(backendConnection);
     }
     
     private TransactionRule getTransactionRule() {

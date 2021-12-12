@@ -117,7 +117,12 @@ public enum ConfigurationPropertyKey implements TypedPropertyKey {
     /**
      * Whether enable sql federation.
      */
-    SQL_FEDERATION_ENABLED("sql-federation-enabled", String.valueOf(Boolean.FALSE), boolean.class);
+    SQL_FEDERATION_ENABLED("sql-federation-enabled", String.valueOf(Boolean.FALSE), boolean.class),
+    
+    /**
+     * Whether enable experimental reactive backend.
+     */
+    EXPERIMENTAL_REACTIVE_BACKEND_ENABLED("experimental-reactive-backend-enabled", String.valueOf(Boolean.FALSE), boolean.class);
     
     private final String key;
     
