@@ -38,6 +38,7 @@ import org.apache.shardingsphere.proxy.frontend.spi.DatabaseProtocolFrontendEngi
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Reactive command executor task.
@@ -54,18 +55,14 @@ public final class ReactiveCommandExecuteTask implements Runnable {
     
     private final Object message;
     
-    private volatile boolean isNeedFlush = false;
+    private final AtomicBoolean isNeedFlush = new AtomicBoolean(false);
     
     @Override
     public void run() {
         PacketPayload payload = databaseProtocolFrontendEngine.getCodecEngine().createPacketPayload((ByteBuf) message, context.channel().attr(CommonConstants.CHARSET_ATTRIBUTE_KEY).get());
         try {
             connectionSession.getBackendConnection().prepareForTaskExecution();
-            executeCommand(payload)
-                    .eventually(unused -> {
-                        closeResources(payload);
-                        return Future.succeededFuture();
-                    });
+            executeCommand(payload).eventually(unused -> closeResources(payload));
             // CHECKSTYLE:OFF
         } catch (final Exception ex) {
             // CHECKSTYLE:ON
@@ -81,30 +78,34 @@ public final class ReactiveCommandExecuteTask implements Runnable {
         CommandExecutor commandExecutor = commandExecuteEngine.getCommandExecutor(type, commandPacket, connectionSession);
         return commandExecutor.executeFuture()
                 .compose(this::handleResponsePackets)
-                .onFailure(this::processThrowable)
-                .eventually(unused -> commandExecutor.closeFuture());
+                .eventually(unused -> commandExecutor.closeFuture())
+                .onFailure(this::processThrowable);
     }
     
     private Future<Void> handleResponsePackets(Collection<DatabasePacket<?>> responsePackets) {
-        isNeedFlush = !responsePackets.isEmpty();
+        log.info("Connection {} handling {} response packets.", connectionSession.getConnectionId(), responsePackets.size());
         responsePackets.forEach(context::write);
+        isNeedFlush.set(!responsePackets.isEmpty());
         return Future.succeededFuture();
     }
     
     @SuppressWarnings("unchecked")
     @SneakyThrows(BackendConnectionException.class)
-    private void closeResources(final PacketPayload payload) {
+    private Future<Void> closeResources(final PacketPayload payload) {
         try {
             payload.close();
         } catch (final Exception ignored) {
         }
         SQLStatementSchemaHolder.remove();
-        ((Future<Void>) connectionSession.getBackendConnection().closeExecutionResources()).eventually(unused -> {
-            if (isNeedFlush) {
-                context.flush();
-            }
-            return Future.succeededFuture();
-        });
+        return ((Future<Void>) connectionSession.getBackendConnection().closeExecutionResources()).eventually(this::doFlushIfNecessary);
+    }
+    
+    private Future<Void> doFlushIfNecessary(final Void unused) {
+        log.info("Connection {} isNeedFlush {}", connectionSession.getConnectionId(), isNeedFlush);
+        if (isNeedFlush.get()) {
+            context.flush();
+        }
+        return Future.succeededFuture();
     }
     
     private void processThrowable(final Throwable throwable) {

@@ -20,7 +20,9 @@ package org.apache.shardingsphere.proxy.frontend.netty;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelId;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.socket.SocketChannel;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.shardingsphere.db.protocol.CommonConstants;
 import org.apache.shardingsphere.db.protocol.payload.PacketPayload;
@@ -39,13 +41,34 @@ import org.apache.shardingsphere.proxy.frontend.state.ProxyStateContext;
 import org.apache.shardingsphere.transaction.rule.TransactionRule;
 import org.apache.shardingsphere.transaction.rule.builder.DefaultTransactionRuleConfigurationBuilder;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Frontend channel inbound handler.
  */
 @Slf4j
 public final class FrontendChannelInboundHandler extends ChannelInboundHandlerAdapter {
+    
+    private static final Map<ChannelId, SocketChannel> CHANNELS = new ConcurrentHashMap<>();
+    
+    static {
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.execute(() -> {
+            try {
+                Thread.sleep(30000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            for (SocketChannel each : CHANNELS.values()) {
+                log.info("Flushing {}", each);
+                each.flush();
+            }
+        });
+    }
     
     private final DatabaseProtocolFrontendEngine databaseProtocolFrontendEngine;
     
@@ -60,6 +83,7 @@ public final class FrontendChannelInboundHandler extends ChannelInboundHandlerAd
         boolean reactiveBackendEnabled = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps().getValue(ConfigurationPropertyKey.EXPERIMENTAL_REACTIVE_BACKEND_ENABLED);
         BackendConnection backendConnection = reactiveBackendEnabled ? new VertxBackendConnection(connectionSession) : new JDBCBackendConnection(connectionSession);
         connectionSession.setBackendConnection(backendConnection);
+        CHANNELS.put(channel.id(), (SocketChannel) channel);
     }
     
     private TransactionRule getTransactionRule() {
@@ -104,6 +128,7 @@ public final class FrontendChannelInboundHandler extends ChannelInboundHandlerAd
     
     @Override
     public void channelInactive(final ChannelHandlerContext context) {
+        CHANNELS.remove(context.channel().id());
         context.fireChannelInactive();
         closeAllResources();
     }

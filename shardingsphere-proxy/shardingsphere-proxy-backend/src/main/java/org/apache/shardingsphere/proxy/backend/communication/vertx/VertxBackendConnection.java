@@ -137,11 +137,9 @@ public final class VertxBackendConnection implements BackendConnection<Future<Vo
         List<Future> closeFutures = new ArrayList<>(cachedConnections.values().size());
         for (Future<SqlConnection> each : cachedConnections.values()) {
             closeFutures.add(each.compose(SqlClient::close));
-            each.compose(SqlClient::close);
         }
-        return CompositeFuture.join(closeFutures).eventually(unused -> {
+        return CompositeFuture.join(closeFutures).onComplete(unused -> {
             cachedConnections.clear();
-            return Future.succeededFuture();
         }).compose(unused -> Future.succeededFuture());
     }
 }
