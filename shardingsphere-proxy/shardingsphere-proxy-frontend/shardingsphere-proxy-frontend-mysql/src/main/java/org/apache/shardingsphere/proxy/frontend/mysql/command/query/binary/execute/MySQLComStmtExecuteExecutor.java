@@ -114,20 +114,16 @@ public final class MySQLComStmtExecuteExecutor implements QueryCommandExecutor {
         return result;
     }
     
-    
     @Override
     public Future<Collection<DatabasePacket<?>>> executeFuture() {
-        List<DatabasePacket<?>> results = new LinkedList<>();
         return databaseCommunicationEngine.executeFuture().compose(responseHeader -> {
-            results.addAll(responseHeader instanceof QueryResponseHeader ? processQuery((QueryResponseHeader) responseHeader) : processUpdate((UpdateResponseHeader) responseHeader));
-            return Future.succeededFuture();
-        }).compose(unused -> {
+            List<DatabasePacket<?>> result = new LinkedList<>(getHeaderPackets(responseHeader));
             try {
                 while (next()) {
-                    results.add(getQueryRowPacket());
+                    result.add(getQueryRowPacket());
                 }
-                results.add(new MySQLEofPacket(++currentSequenceId));
-                return Future.succeededFuture(results);
+                result.add(new MySQLEofPacket(++currentSequenceId));
+                return Future.succeededFuture(result);
             } catch (SQLException ex) {
                 return Future.failedFuture(ex);
             }
@@ -136,7 +132,10 @@ public final class MySQLComStmtExecuteExecutor implements QueryCommandExecutor {
     
     @Override
     public Collection<DatabasePacket<?>> execute() throws SQLException {
-        ResponseHeader responseHeader = null != databaseCommunicationEngine ? databaseCommunicationEngine.execute() : textProtocolBackendHandler.execute();
+        return getHeaderPackets(null != databaseCommunicationEngine ? databaseCommunicationEngine.execute() : textProtocolBackendHandler.execute());
+    }
+    
+    private Collection<DatabasePacket<?>> getHeaderPackets(final ResponseHeader responseHeader) {
         return responseHeader instanceof QueryResponseHeader ? processQuery((QueryResponseHeader) responseHeader) : processUpdate((UpdateResponseHeader) responseHeader);
     }
     
