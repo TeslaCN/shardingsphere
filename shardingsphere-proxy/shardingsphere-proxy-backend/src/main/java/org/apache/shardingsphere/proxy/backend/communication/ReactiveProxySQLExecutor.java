@@ -18,7 +18,7 @@
 package org.apache.shardingsphere.proxy.backend.communication;
 
 import io.vertx.core.Future;
-import io.vertx.sqlclient.SqlConnection;
+import io.vertx.sqlclient.SqlClient;
 import org.apache.shardingsphere.infra.config.properties.ConfigurationPropertyKey;
 import org.apache.shardingsphere.infra.database.type.DatabaseType;
 import org.apache.shardingsphere.infra.executor.kernel.model.ExecutionGroupContext;
@@ -100,7 +100,7 @@ public final class ReactiveProxySQLExecutor {
     
     private Future<List<ExecuteResult>> useDriverToExecute(final ExecutionContext executionContext, final Collection<ShardingSphereRule> rules,
                                                                  final int maxConnectionsSizePerQuery) throws SQLException {
-        DriverExecutionPrepareEngine<VertxExecutionUnit, Future<SqlConnection>> prepareEngine = new DriverExecutionPrepareEngine<>(
+        DriverExecutionPrepareEngine<VertxExecutionUnit, Future<? extends SqlClient>> prepareEngine = new DriverExecutionPrepareEngine<>(
                 TYPE, maxConnectionsSizePerQuery, backendConnection, new VertxExecutionContext(), rules);
         ExecutionGroupContext<VertxExecutionUnit> executionGroupContext;
         try {

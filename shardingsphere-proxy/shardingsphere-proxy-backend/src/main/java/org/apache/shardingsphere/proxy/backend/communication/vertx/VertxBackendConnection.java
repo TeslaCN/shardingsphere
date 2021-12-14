@@ -39,6 +39,7 @@ import org.apache.shardingsphere.proxy.backend.session.ConnectionSession;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -53,12 +54,12 @@ public final class VertxBackendConnection implements BackendConnection<Future<Vo
     private final Multimap<String, Future<SqlConnection>> cachedConnections = LinkedHashMultimap.create();
     
     @Override
-    public List<Future<SqlConnection>> getConnections(final String dataSourceName, final int connectionSize, final ConnectionMode connectionMode) {
+    public List<Future<? extends SqlClient>> getConnections(final String dataSourceName, final int connectionSize, final ConnectionMode connectionMode) {
         return connectionSession.getTransactionStatus().isInTransaction()
                 ? getConnectionsWithTransaction(dataSourceName, connectionSize) : getConnectionsWithoutTransaction(dataSourceName, connectionSize, connectionMode);
     }
     
-    private List<Future<SqlConnection>> getConnectionsWithTransaction(final String dataSourceName, final int connectionSize) {
+    private List<Future<? extends SqlClient>> getConnectionsWithTransaction(final String dataSourceName, final int connectionSize) {
         Collection<Future<SqlConnection>> connections;
         synchronized (cachedConnections) {
             connections = cachedConnections.get(dataSourceName);
@@ -80,7 +81,7 @@ public final class VertxBackendConnection implements BackendConnection<Future<Vo
                 cachedConnections.putAll(dataSourceName, result);
             }
         }
-        return result;
+        return new ArrayList<>(result);
     }
     
     private List<Future<SqlConnection>> createNewConnections(final String dataSourceName, final int connectionSize) {
@@ -98,22 +99,19 @@ public final class VertxBackendConnection implements BackendConnection<Future<Vo
         }
     }
     
-    private List<Future<SqlConnection>> getConnectionsWithoutTransaction(final String dataSourceName, final int connectionSize, final ConnectionMode connectionMode) {
+    private List<Future<? extends SqlClient>> getConnectionsWithoutTransaction(final String dataSourceName, final int connectionSize, final ConnectionMode connectionMode) {
         Preconditions.checkNotNull(connectionSession.getSchemaName(), "Current schema is null.");
-        List<Future<SqlConnection>> result = ProxyContext.getInstance().getVertxBackendDataSource().getConnections(connectionSession.getSchemaName(), dataSourceName, connectionSize);
-        synchronized (cachedConnections) {
-            cachedConnections.putAll(dataSourceName, result);
-        }
-        return result;
+        Future<SqlClient> poolFuture = Future.succeededFuture(ProxyContext.getInstance().getVertxBackendDataSource().getPool(connectionSession.getSchemaName(), dataSourceName));
+        return Collections.singletonList(poolFuture);
     }
     
     @Override
-    public Future<Query<RowSet<Row>>> createStorageResource(final Future<SqlConnection> connection, final ConnectionMode connectionMode, final VertxExecutionContext option) {
+    public Future<Query<RowSet<Row>>> createStorageResource(final Future<? extends SqlClient> connection, final ConnectionMode connectionMode, final VertxExecutionContext option) {
         return Future.failedFuture(new UnsupportedOperationException("Vert.x query is not like JDBC statement."));
     }
     
     @Override
-    public Future<Query<RowSet<Row>>> createStorageResource(final String sql, final List<Object> parameters, final Future<SqlConnection> connection, final ConnectionMode connectionMode,
+    public Future<Query<RowSet<Row>>> createStorageResource(final String sql, final List<Object> parameters, final Future<? extends SqlClient> connection, final ConnectionMode connectionMode,
                                                             final VertxExecutionContext ignored) {
         return Future.failedFuture(new UnsupportedOperationException("Vert.x prepared query is not like JDBC prepared statement."));
     }

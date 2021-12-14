@@ -18,7 +18,7 @@
 package org.apache.shardingsphere.infra.executor.sql.prepare.driver.vertx.builder;
 
 import io.vertx.core.Future;
-import io.vertx.sqlclient.SqlConnection;
+import io.vertx.sqlclient.SqlClient;
 import org.apache.shardingsphere.infra.executor.sql.context.ExecutionUnit;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.ConnectionMode;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.driver.vertx.VertxExecutionUnit;
@@ -30,9 +30,9 @@ import java.sql.SQLException;
 public final class QueryExecutionUnitBuilder implements VertxExecutionUnitBuilder {
     
     @Override
-    public VertxExecutionUnit build(final ExecutionUnit executionUnit, final ExecutorVertxManager executorManager, final Future<SqlConnection> connection, final ConnectionMode connectionMode,
+    public VertxExecutionUnit build(final ExecutionUnit executionUnit, final ExecutorVertxManager executorManager, final Future<? extends SqlClient> connection, final ConnectionMode connectionMode,
                                     final VertxExecutionContext option) throws SQLException {
-        return new VertxExecutionUnit(executionUnit, connectionMode, connection.compose(sqlConnection -> Future.succeededFuture(sqlConnection.preparedQuery(executionUnit.getSqlUnit().getSql()))));
+        return new VertxExecutionUnit(executionUnit, connectionMode, connection.compose(sqlClient -> Future.succeededFuture(sqlClient.preparedQuery(executionUnit.getSqlUnit().getSql()))));
     }
     
     @Override
