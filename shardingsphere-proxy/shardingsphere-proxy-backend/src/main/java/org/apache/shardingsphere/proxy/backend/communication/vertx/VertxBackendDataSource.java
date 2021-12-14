@@ -27,6 +27,9 @@ import io.vertx.mysqlclient.MySQLPool;
 import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.SqlConnection;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.apache.shardingsphere.proxy.backend.communication.BackendDataSource;
 import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 
@@ -41,11 +44,24 @@ import java.util.concurrent.TimeUnit;
 /**
  * Vert.x backend data source.
  */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class VertxBackendDataSource implements BackendDataSource {
+    
+    private static final VertxBackendDataSource INSTANCE = new VertxBackendDataSource();
     
     private final Map<String, Map<String, Pool>> schemaVertxPools = new ConcurrentHashMap<>();
     
+    @Getter
     private final Vertx vertx = Vertx.vertx(new VertxOptions().setPreferNativeTransport(true));
+    
+    /**
+     * Get instance of VertxBackendDataSource.
+     *
+     * @return instance of VertxBackendDataSource
+     */
+    public static VertxBackendDataSource getInstance() {
+        return INSTANCE;
+    }
     
     /**
      * Get Vert.x sql connection future.
