@@ -43,6 +43,7 @@ import java.util.Optional;
 /**
  * Reactive command executor task.
  */
+@SuppressWarnings("unchecked")
 @Slf4j
 @RequiredArgsConstructor
 public final class ReactiveCommandExecuteTask implements Runnable {
@@ -61,8 +62,7 @@ public final class ReactiveCommandExecuteTask implements Runnable {
     public void run() {
         PacketPayload payload = databaseProtocolFrontendEngine.getCodecEngine().createPacketPayload((ByteBuf) message, context.channel().attr(CommonConstants.CHARSET_ATTRIBUTE_KEY).get());
         try {
-            connectionSession.getBackendConnection().prepareForTaskExecution();
-            executeCommand(payload).eventually(unused -> closeResources(payload));
+            ((Future<Void>) connectionSession.getBackendConnection().prepareForTaskExecution()).compose(unused -> executeCommand(payload).eventually(unused0 -> closeResources(payload)));
             // CHECKSTYLE:OFF
         } catch (final Exception ex) {
             // CHECKSTYLE:ON
@@ -71,7 +71,8 @@ public final class ReactiveCommandExecuteTask implements Runnable {
         }
     }
     
-    private Future<Void> executeCommand(final PacketPayload payload) throws SQLException {
+    @SneakyThrows(SQLException.class)
+    private Future<Void> executeCommand(final PacketPayload payload) {
         CommandExecuteEngine commandExecuteEngine = databaseProtocolFrontendEngine.getCommandExecuteEngine();
         CommandPacketType type = commandExecuteEngine.getCommandPacketType(payload);
         CommandPacket commandPacket = commandExecuteEngine.getCommandPacket(payload, type, connectionSession);
@@ -88,7 +89,6 @@ public final class ReactiveCommandExecuteTask implements Runnable {
         return Future.succeededFuture();
     }
     
-    @SuppressWarnings("unchecked")
     @SneakyThrows(BackendConnectionException.class)
     private Future<Void> closeResources(final PacketPayload payload) {
         try {

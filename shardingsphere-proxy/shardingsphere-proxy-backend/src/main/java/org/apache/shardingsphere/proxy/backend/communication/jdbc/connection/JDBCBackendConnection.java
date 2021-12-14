@@ -31,7 +31,7 @@ import org.apache.shardingsphere.infra.federation.executor.FederationExecutor;
 import org.apache.shardingsphere.proxy.backend.communication.BackendConnection;
 import org.apache.shardingsphere.proxy.backend.communication.DatabaseCommunicationEngine;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.statement.StatementMemoryStrictlyFetchSizeSetter;
-import org.apache.shardingsphere.proxy.backend.communication.jdbc.transaction.BackendTransactionManager;
+import org.apache.shardingsphere.proxy.backend.communication.jdbc.transaction.JDBCBackendTransactionManager;
 import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 import org.apache.shardingsphere.proxy.backend.exception.BackendConnectionException;
 import org.apache.shardingsphere.proxy.backend.session.ConnectionSession;
@@ -232,7 +232,7 @@ public final class JDBCBackendConnection implements BackendConnection<Void>, Exe
             connectionStatus.switchToUsing();
         }
         if (!connectionSession.isAutoCommit() && !connectionSession.getTransactionStatus().isInTransaction()) {
-            BackendTransactionManager transactionManager = new BackendTransactionManager(this);
+            JDBCBackendTransactionManager transactionManager = new JDBCBackendTransactionManager(this);
             try {
                 transactionManager.begin();
             } catch (SQLException ex) {
