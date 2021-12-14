@@ -19,6 +19,7 @@ package org.apache.shardingsphere.proxy.frontend.command;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -61,11 +62,7 @@ public final class ReactiveCommandExecuteTask implements Runnable {
         PacketPayload payload = databaseProtocolFrontendEngine.getCodecEngine().createPacketPayload((ByteBuf) message, context.channel().attr(CommonConstants.CHARSET_ATTRIBUTE_KEY).get());
         try {
             connectionSession.getBackendConnection().prepareForTaskExecution();
-            executeCommand(payload)
-                    .eventually(unused -> {
-                        closeResources(payload);
-                        return Future.succeededFuture();
-                    });
+            executeCommand(payload).eventually(unused -> closeResources(payload));
             // CHECKSTYLE:OFF
         } catch (final Exception ex) {
             // CHECKSTYLE:ON
@@ -81,30 +78,35 @@ public final class ReactiveCommandExecuteTask implements Runnable {
         CommandExecutor commandExecutor = commandExecuteEngine.getCommandExecutor(type, commandPacket, connectionSession);
         return commandExecutor.executeFuture()
                 .compose(this::handleResponsePackets)
-                .onFailure(this::processThrowable)
-                .eventually(unused -> commandExecutor.closeFuture());
+                .eventually(unused -> commandExecutor.closeFuture())
+                .onFailure(this::processThrowable);
     }
     
     private Future<Void> handleResponsePackets(Collection<DatabasePacket<?>> responsePackets) {
-        isNeedFlush = !responsePackets.isEmpty();
         responsePackets.forEach(context::write);
+        isNeedFlush = !responsePackets.isEmpty();
         return Future.succeededFuture();
     }
     
     @SuppressWarnings("unchecked")
     @SneakyThrows(BackendConnectionException.class)
-    private void closeResources(final PacketPayload payload) {
+    private Future<Void> closeResources(final PacketPayload payload) {
         try {
             payload.close();
         } catch (final Exception ignored) {
         }
         SQLStatementSchemaHolder.remove();
-        ((Future<Void>) connectionSession.getBackendConnection().closeExecutionResources()).eventually(unused -> {
-            if (isNeedFlush) {
+        return ((Future<Void>) connectionSession.getBackendConnection().closeExecutionResources()).onComplete(this::doFlushIfNecessary);
+    }
+    
+    private void doFlushIfNecessary(final AsyncResult<Void> unused) {
+        if (isNeedFlush) {
+            if (context.executor().inEventLoop()) {
+                context.executor().execute(context::flush);
+            } else {
                 context.flush();
             }
-            return Future.succeededFuture();
-        });
+        }
     }
     
     private void processThrowable(final Throwable throwable) {
