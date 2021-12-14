@@ -43,7 +43,7 @@ public final class ProxyContext {
     
     private final JDBCBackendDataSource backendDataSource = new JDBCBackendDataSource();
     
-    private final VertxBackendDataSource vertxBackendDataSource = new VertxBackendDataSource();
+    private final VertxBackendDataSource vertxBackendDataSource = VertxBackendDataSource.getInstance();
     
     private volatile ContextManager contextManager = new ContextManager();
     
