@@ -56,17 +56,29 @@ public final class VertxBackendDataSource implements BackendDataSource {
      * @return futures of sql connections
      */
     public List<Future<SqlConnection>> getConnections(final String schemaName, final String dataSourceName, final int connectionSize) {
+        Pool pool = getPool(schemaName, dataSourceName);
+        List<Future<SqlConnection>> result = new ArrayList<>(connectionSize);
+        for (int i = 0; i < connectionSize; i++) {
+            result.add(pool.getConnection());
+        }
+        return result;
+    }
+    
+    /**
+     * Get Vert.x pool.
+     *
+     * @param schemaName schema name
+     * @param dataSourceName data source name
+     * @return Vert.x pool
+     */
+    public Pool getPool(final String schemaName, final String dataSourceName) {
         Map<String, Pool> vertxPools = schemaVertxPools.get(schemaName);
         if (null == vertxPools) {
             vertxPools = schemaVertxPools.computeIfAbsent(schemaName, unused -> new ConcurrentHashMap<>());
         }
-        Pool pool = vertxPools.get(dataSourceName);
-        if (null == pool) {
-            pool = vertxPools.computeIfAbsent(dataSourceName, unused -> createPoolFromSchemaDataSource(schemaName, dataSourceName));
-        }
-        List<Future<SqlConnection>> result = new ArrayList<>(connectionSize);
-        for (int i = 0; i < connectionSize; i++) {
-            result.add(pool.getConnection());
+        Pool result = vertxPools.get(dataSourceName);
+        if (null == result) {
+            result = vertxPools.computeIfAbsent(dataSourceName, unused -> createPoolFromSchemaDataSource(schemaName, dataSourceName));
         }
         return result;
     }
