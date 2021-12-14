@@ -15,35 +15,37 @@
  * limitations under the License.
  */
 
-package org.apache.shardingsphere.proxy.backend.communication.jdbc.transaction;
+package org.apache.shardingsphere.proxy.backend.communication;
 
 import java.sql.SQLException;
 
 /**
  * Transaction manager interface for proxy.
+ *
+ * @param <T> return type of methods
  */
-public interface TransactionManager {
+public interface TransactionManager<T> {
     
     /**
      * Begin transaction.
      *
      * @throws SQLException SQL exception
      */
-    void begin() throws SQLException;
+    T begin() throws SQLException;
     
     /**
      * Commit transaction.
      *
      * @throws SQLException SQL exception
      */
-    void commit() throws SQLException;
+    T commit() throws SQLException;
     
     /**
      * Rollback transaction.
      *
      * @throws SQLException SQL exception
      */
-    void rollback() throws SQLException;
+    T rollback() throws SQLException;
     
     /**
      * Set savepoint.
@@ -51,7 +53,7 @@ public interface TransactionManager {
      * @param savepointName savepoint name
      * @throws SQLException SQL exception
      */
-    void setSavepoint(String savepointName) throws SQLException;
+    T setSavepoint(String savepointName) throws SQLException;
     
     /**
      * Rollback to savepoint.
@@ -59,7 +61,7 @@ public interface TransactionManager {
      * @param savepointName savepoint name
      * @throws SQLException SQL exception
      */
-    void rollbackTo(String savepointName) throws SQLException;
+    T rollbackTo(String savepointName) throws SQLException;
     
     /**
      * Release savepoint.
@@ -67,5 +69,5 @@ public interface TransactionManager {
      * @param savepointName savepoint name
      * @throws SQLException SQL exception
      */
-    void releaseSavepoint(String savepointName) throws SQLException;
+    T releaseSavepoint(String savepointName) throws SQLException;
 }
