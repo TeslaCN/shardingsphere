@@ -29,6 +29,7 @@ public interface TransactionManager<T> {
     /**
      * Begin transaction.
      *
+     * @return can be Void or Future
      * @throws SQLException SQL exception
      */
     T begin() throws SQLException;
@@ -36,6 +37,7 @@ public interface TransactionManager<T> {
     /**
      * Commit transaction.
      *
+     * @return can be Void or Future
      * @throws SQLException SQL exception
      */
     T commit() throws SQLException;
@@ -43,6 +45,7 @@ public interface TransactionManager<T> {
     /**
      * Rollback transaction.
      *
+     * @return can be Void or Future
      * @throws SQLException SQL exception
      */
     T rollback() throws SQLException;
@@ -51,6 +54,7 @@ public interface TransactionManager<T> {
      * Set savepoint.
      *
      * @param savepointName savepoint name
+     * @return can be Void or Future
      * @throws SQLException SQL exception
      */
     T setSavepoint(String savepointName) throws SQLException;
@@ -59,6 +63,7 @@ public interface TransactionManager<T> {
      * Rollback to savepoint.
      *
      * @param savepointName savepoint name
+     * @return can be Void or Future
      * @throws SQLException SQL exception
      */
     T rollbackTo(String savepointName) throws SQLException;
@@ -67,6 +72,7 @@ public interface TransactionManager<T> {
      * Release savepoint.
      *
      * @param savepointName savepoint name
+     * @return can be Void or Future
      * @throws SQLException SQL exception
      */
     T releaseSavepoint(String savepointName) throws SQLException;
