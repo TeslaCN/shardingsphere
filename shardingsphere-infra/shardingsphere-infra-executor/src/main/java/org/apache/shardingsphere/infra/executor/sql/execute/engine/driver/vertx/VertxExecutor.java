@@ -27,14 +27,23 @@ import org.apache.shardingsphere.infra.executor.sql.execute.result.ExecuteResult
 import java.sql.SQLException;
 import java.util.List;
 
+/**
+ * Vert.x executor.
+ */
 @RequiredArgsConstructor
 public final class VertxExecutor {
     
     private final ExecutorEngine executorEngine;
     
+    /**
+     * Execute group context and return futures.
+     *
+     * @param executionGroupContext Vert.x execution group context
+     * @param callback callback
+     * @return futures of execute results
+     */
     @SneakyThrows(SQLException.class)
-    public List<Future<ExecuteResult>> execute(final ExecutionGroupContext<VertxExecutionUnit> executionGroupContext,
-                                               final VertxExecutorCallback firstCallback, final VertxExecutorCallback callback) {
-        return executorEngine.execute(executionGroupContext, firstCallback, callback, true);
+    public List<Future<ExecuteResult>> execute(final ExecutionGroupContext<VertxExecutionUnit> executionGroupContext, final VertxExecutorCallback callback) {
+        return executorEngine.execute(executionGroupContext, null, callback, true);
     }
 }

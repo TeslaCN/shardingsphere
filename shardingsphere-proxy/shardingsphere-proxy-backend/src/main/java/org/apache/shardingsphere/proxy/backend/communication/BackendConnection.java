@@ -37,6 +37,7 @@ public interface BackendConnection<T> {
     /**
      * Prepare for task execution.
      *
+     * @return can be Void or Future
      * @throws BackendConnectionException backend connection exception
      */
     T prepareForTaskExecution() throws BackendConnectionException;
@@ -44,13 +45,15 @@ public interface BackendConnection<T> {
     /**
      * Close resources used in execution.
      *
+     * @return can be Void or Future
      * @throws BackendConnectionException backend connection exception
      */
     T closeExecutionResources() throws BackendConnectionException;
     
     /**
      * Close all resources.
-     * 
+     *
+     * @return can be Void or Future
      * @throws BackendConnectionException backend connection exception
      */
     T closeAllResources() throws BackendConnectionException;

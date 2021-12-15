@@ -58,7 +58,7 @@ public final class ReactiveProxySQLExecutor {
     
     public ReactiveProxySQLExecutor(final VertxBackendConnection backendConnection) {
         this.backendConnection = backendConnection;
-        reactiveExecutor = new ProxyReactiveExecutor(backendConnection.getConnectionSession(), new VertxExecutor(BackendExecutorContext.getInstance().getExecutorEngine()));
+        reactiveExecutor = new ProxyReactiveExecutor(new VertxExecutor(BackendExecutorContext.getInstance().getExecutorEngine()));
     }
     
     /**
