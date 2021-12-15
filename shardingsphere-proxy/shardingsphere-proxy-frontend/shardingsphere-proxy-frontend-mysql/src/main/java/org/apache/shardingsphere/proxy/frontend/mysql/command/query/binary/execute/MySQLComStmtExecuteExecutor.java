@@ -116,8 +116,11 @@ public final class MySQLComStmtExecuteExecutor implements QueryCommandExecutor {
     
     @Override
     public Future<Collection<DatabasePacket<?>>> executeFuture() {
-        return databaseCommunicationEngine.executeFuture().compose(responseHeader -> {
+        return (null != databaseCommunicationEngine ? databaseCommunicationEngine.executeFuture() : textProtocolBackendHandler.executeFuture()).compose(responseHeader -> {
             List<DatabasePacket<?>> result = new LinkedList<>(getHeaderPackets(responseHeader));
+            if (ResponseType.UPDATE == responseType) {
+                return Future.succeededFuture(result);
+            }
             try {
                 while (next()) {
                     result.add(getQueryRowPacket());

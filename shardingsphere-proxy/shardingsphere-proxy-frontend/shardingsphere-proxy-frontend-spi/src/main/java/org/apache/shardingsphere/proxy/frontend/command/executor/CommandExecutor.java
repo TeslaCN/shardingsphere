@@ -41,8 +41,10 @@ public interface CommandExecutor extends ReactiveCommandExecutor {
         try {
             Collection<DatabasePacket<?>> result = execute();
             return Future.succeededFuture(result);
-        } catch (SQLException e) {
-            return Future.failedFuture(e);
+            // CHECKSTYLE:OFF
+        } catch (final Exception ex) {
+            // CHECKSTYLE:ON
+            return Future.failedFuture(ex);
         }
     }
     
