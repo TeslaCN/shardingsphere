@@ -58,6 +58,8 @@ public final class ReactiveCommandExecuteTask implements Runnable {
     
     private volatile boolean isNeedFlush;
     
+    private volatile boolean writeInEventLoop;
+    
     @Override
     public void run() {
         PacketPayload payload = databaseProtocolFrontendEngine.getCodecEngine().createPacketPayload((ByteBuf) message, context.channel().attr(CommonConstants.CHARSET_ATTRIBUTE_KEY).get());
@@ -85,7 +87,7 @@ public final class ReactiveCommandExecuteTask implements Runnable {
     
     private Future<Void> handleResponsePackets(final Collection<DatabasePacket<?>> responsePackets) {
         responsePackets.forEach(context::write);
-        isNeedFlush = !responsePackets.isEmpty();
+        writeInEventLoop = (isNeedFlush = !responsePackets.isEmpty()) && context.executor().inEventLoop();
         return Future.succeededFuture();
     }
     
@@ -102,12 +104,13 @@ public final class ReactiveCommandExecuteTask implements Runnable {
     }
     
     private void doFlushIfNecessary(final AsyncResult<Void> unused) {
-        if (isNeedFlush) {
-            if (context.executor().inEventLoop()) {
-                context.executor().execute(context::flush);
-            } else {
-                context.flush();
-            }
+        if (!isNeedFlush) {
+            return;
+        }
+        if (!writeInEventLoop && context.executor().inEventLoop()) {
+            context.executor().execute(context::flush);
+        } else {
+            context.flush();
         }
     }
     
