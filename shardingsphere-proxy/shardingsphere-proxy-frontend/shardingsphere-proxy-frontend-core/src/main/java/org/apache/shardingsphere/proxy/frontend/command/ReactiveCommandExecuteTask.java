@@ -56,7 +56,7 @@ public final class ReactiveCommandExecuteTask implements Runnable {
     
     private final Object message;
     
-    private volatile boolean isNeedFlush = false;
+    private volatile boolean isNeedFlush;
     
     @Override
     public void run() {
@@ -83,7 +83,7 @@ public final class ReactiveCommandExecuteTask implements Runnable {
                 .onFailure(this::processThrowable);
     }
     
-    private Future<Void> handleResponsePackets(Collection<DatabasePacket<?>> responsePackets) {
+    private Future<Void> handleResponsePackets(final Collection<DatabasePacket<?>> responsePackets) {
         responsePackets.forEach(context::write);
         isNeedFlush = !responsePackets.isEmpty();
         return Future.succeededFuture();
@@ -93,7 +93,9 @@ public final class ReactiveCommandExecuteTask implements Runnable {
     private Future<Void> closeResources(final PacketPayload payload) {
         try {
             payload.close();
+            // CHECKSTYLE:OFF
         } catch (final Exception ignored) {
+            // CHECKSTYLE:ON
         }
         SQLStatementSchemaHolder.remove();
         return ((Future<Void>) connectionSession.getBackendConnection().closeExecutionResources()).onComplete(this::doFlushIfNecessary);
