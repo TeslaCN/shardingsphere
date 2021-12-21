@@ -25,6 +25,7 @@ import org.apache.shardingsphere.infra.database.type.DatabaseTypeRegistry;
 import org.apache.shardingsphere.infra.parser.ShardingSphereSQLParserEngine;
 import org.apache.shardingsphere.mode.metadata.MetaDataContexts;
 import org.apache.shardingsphere.parser.rule.SQLParserRule;
+import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.JDBCBackendConnection;
 import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 import org.apache.shardingsphere.proxy.backend.session.ConnectionSession;
 import org.apache.shardingsphere.proxy.frontend.command.executor.CommandExecutor;
@@ -41,8 +42,9 @@ public final class PostgreSQLComParseExecutor implements CommandExecutor {
     
     public PostgreSQLComParseExecutor(final PostgreSQLComParsePacket packet, final ConnectionSession connectionSession) {
         String schemaName = connectionSession.getSchemaName();
-        SQLStatement sqlStatement = parseSql(packet.getSql(), schemaName);
-        PostgreSQLPreparedStatementRegistry.getInstance().register(connectionSession.getConnectionId(), packet.getStatementId(), packet.getSql(), sqlStatement, packet.getColumnTypes());
+        String sql = connectionSession.getBackendConnection() instanceof JDBCBackendConnection ? alterSQLToJDBCStyle(packet.getSql()) : packet.getSql();
+        SQLStatement sqlStatement = parseSql(sql, schemaName);
+        PostgreSQLPreparedStatementRegistry.getInstance().register(connectionSession.getConnectionId(), packet.getStatementId(), sql, sqlStatement, packet.getColumnTypes());
     }
     
     private SQLStatement parseSql(final String sql, final String schemaName) {
@@ -54,6 +56,10 @@ public final class PostgreSQLComParseExecutor implements CommandExecutor {
                 DatabaseTypeRegistry.getTrunkDatabaseTypeName(metaDataContexts.getMetaData(schemaName).getResource().getDatabaseType()),
                 metaDataContexts.getGlobalRuleMetaData().findSingleRule(SQLParserRule.class).orElse(null));
         return sqlStatementParserEngine.parse(sql, true);
+    }
+    
+    private String alterSQLToJDBCStyle(final String sql) {
+        return sql.replaceAll("\\$[0-9]+", "?");
     }
     
     @Override

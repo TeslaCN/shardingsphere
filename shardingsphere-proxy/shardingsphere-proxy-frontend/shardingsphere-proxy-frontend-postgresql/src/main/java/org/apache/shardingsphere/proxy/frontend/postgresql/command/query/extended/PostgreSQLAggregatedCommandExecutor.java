@@ -17,12 +17,14 @@
 
 package org.apache.shardingsphere.proxy.frontend.postgresql.command.query.extended;
 
+import io.vertx.core.Future;
 import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
 import org.apache.shardingsphere.proxy.frontend.command.executor.CommandExecutor;
 
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -30,6 +32,21 @@ import java.util.List;
 public final class PostgreSQLAggregatedCommandExecutor implements CommandExecutor {
     
     private final List<CommandExecutor> executors;
+    
+    @Override
+    public Future<Collection<DatabasePacket<?>>> executeFuture() {
+        return doExecuteFuture(new LinkedList<>(), executors.iterator());
+    }
+    
+    private Future<Collection<DatabasePacket<?>>> doExecuteFuture(final Collection<DatabasePacket<?>> result, Iterator<CommandExecutor> iterator) {
+        if (!iterator.hasNext()) {
+            return Future.succeededFuture(result);
+        }
+        return iterator.next().executeFuture().compose(executeResult -> {
+            result.addAll(executeResult);
+            return doExecuteFuture(result, iterator);
+        });
+    }
     
     @Override
     public Collection<DatabasePacket<?>> execute() throws SQLException {

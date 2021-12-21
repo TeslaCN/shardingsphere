@@ -17,6 +17,7 @@
 
 package org.apache.shardingsphere.proxy.frontend.postgresql.command.query.simple;
 
+import io.vertx.core.Future;
 import lombok.Getter;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.PostgreSQLPacket;
@@ -26,6 +27,7 @@ import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.Pos
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.PostgreSQLRowDescriptionPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.simple.PostgreSQLComQueryPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.generic.PostgreSQLCommandCompletePacket;
+import org.apache.shardingsphere.db.protocol.postgresql.packet.generic.PostgreSQLReadyForQueryPacket;
 import org.apache.shardingsphere.infra.database.type.DatabaseTypeRegistry;
 import org.apache.shardingsphere.proxy.backend.response.header.ResponseHeader;
 import org.apache.shardingsphere.proxy.backend.response.header.query.QueryResponseHeader;
@@ -47,6 +49,7 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -58,6 +61,8 @@ public final class PostgreSQLComQueryExecutor implements QueryCommandExecutor {
     
     private final TextProtocolBackendHandler textProtocolBackendHandler;
     
+    private final ConnectionSession connectionSession;
+    
     @Getter
     private volatile ResponseType responseType;
     
@@ -66,6 +71,34 @@ public final class PostgreSQLComQueryExecutor implements QueryCommandExecutor {
         this.connectionContext = connectionContext;
         textProtocolBackendHandler = TextProtocolBackendHandlerFactory.newInstance(DatabaseTypeRegistry.getActualDatabaseType("PostgreSQL"),
                 comQueryPacket.getSql(), Optional::empty, connectionSession);
+        this.connectionSession = connectionSession;
+    }
+    
+    @Override
+    public Future<Collection<DatabasePacket<?>>> executeFuture() {
+        return textProtocolBackendHandler.executeFuture().compose(responseHeader -> {
+            try {
+                List<DatabasePacket<?>> result = new LinkedList<>();
+                if (!(responseHeader instanceof QueryResponseHeader)) {
+                    responseType = ResponseType.UPDATE;
+                    result.add(createUpdatePacket((UpdateResponseHeader) responseHeader));
+                } else {
+                    result.add(createRowDescriptionPacket((QueryResponseHeader) responseHeader));
+                    long dataRows = 0;
+                    while (next()) {
+                        dataRows++;
+                        result.add(getQueryRowPacket());
+                    }
+                    result.add(new PostgreSQLCommandCompletePacket(PostgreSQLCommand.SELECT.name(), dataRows));
+                }
+                result.add(new PostgreSQLReadyForQueryPacket(connectionSession.getTransactionStatus().isInTransaction()));
+                return Future.succeededFuture(result);
+                // CHECKSTYLE:OFF
+            } catch (final Exception ex) {
+                // CHECKSTYLE:ON
+                return Future.failedFuture(ex);
+            }
+        });
     }
     
     @Override
