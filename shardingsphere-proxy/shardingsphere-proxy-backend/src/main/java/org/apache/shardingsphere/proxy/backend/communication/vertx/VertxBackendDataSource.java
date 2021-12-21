@@ -24,6 +24,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.mysqlclient.MySQLConnectOptions;
 import io.vertx.mysqlclient.MySQLPool;
+import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.SqlConnection;
@@ -109,7 +111,7 @@ public final class VertxBackendDataSource implements BackendDataSource {
             case "mysql":
                 return createMySQLPool(value, uri);
             case "postgresql":
-                throw new UnsupportedOperationException("For now");
+                return createPostgreSQLPool(value, uri);
             case "opengauss":
                 throw new UnsupportedOperationException("For now");
             default:
@@ -123,5 +125,13 @@ public final class VertxBackendDataSource implements BackendDataSource {
         PoolOptions poolOptions = new PoolOptions().setMaxSize(value.getMaximumPoolSize()).setIdleTimeout((int) value.getIdleTimeout()).setIdleTimeoutUnit(TimeUnit.MILLISECONDS)
                 .setConnectionTimeout((int) value.getConnectionTimeout()).setConnectionTimeoutUnit(TimeUnit.MILLISECONDS);
         return MySQLPool.pool(vertx, options, poolOptions);
+    }
+    
+    private PgPool createPostgreSQLPool(final HikariDataSource value, final URI uri) {
+        PgConnectOptions options = new PgConnectOptions().setHost(uri.getHost()).setPort(uri.getPort()).setDatabase(uri.getPath().replace("/", ""))
+                .setUser(value.getUsername()).setPassword(value.getPassword()).setCachePreparedStatements(true).setPreparedStatementCacheMaxSize(16384);
+        PoolOptions poolOptions = new PoolOptions().setMaxSize(value.getMaximumPoolSize()).setIdleTimeout((int) value.getIdleTimeout()).setIdleTimeoutUnit(TimeUnit.MILLISECONDS)
+                .setConnectionTimeout((int) value.getConnectionTimeout()).setConnectionTimeoutUnit(TimeUnit.MILLISECONDS);
+        return PgPool.pool(vertx, options, poolOptions);
     }
 }

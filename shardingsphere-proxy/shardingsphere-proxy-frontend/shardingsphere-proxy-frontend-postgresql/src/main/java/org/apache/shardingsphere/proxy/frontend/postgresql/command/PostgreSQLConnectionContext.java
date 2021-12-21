@@ -22,7 +22,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.apache.shardingsphere.db.protocol.postgresql.constant.PostgreSQLValueFormat;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.extended.PostgreSQLPreparedStatement;
-import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.JDBCBackendConnection;
+import org.apache.shardingsphere.proxy.backend.communication.BackendConnection;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.query.extended.PostgreSQLPortal;
 
 import java.sql.SQLException;
@@ -54,7 +54,7 @@ public final class PostgreSQLConnectionContext {
      * @throws SQLException SQL exception
      */
     public PostgreSQLPortal createPortal(final String portal, final PostgreSQLPreparedStatement preparedStatement, final List<Object> parameters, final List<PostgreSQLValueFormat> resultFormats,
-                                         final JDBCBackendConnection backendConnection) throws SQLException {
+                                         final BackendConnection backendConnection) throws SQLException {
         PostgreSQLPortal result = new PostgreSQLPortal(preparedStatement, parameters, resultFormats, backendConnection);
         portals.put(portal, result);
         return result;

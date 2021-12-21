@@ -47,6 +47,7 @@ public final class PostgreSQLCommandPacketFactory {
      */
     public static PostgreSQLCommandPacket newInstance(final PostgreSQLCommandPacketType commandPacketType, final PostgreSQLPacketPayload payload, final int connectionId) {
         if (!PostgreSQLCommandPacketType.isExtendedProtocolPacketType(commandPacketType)) {
+            payload.skipReserved(1);
             return getPostgreSQLCommandPacket(commandPacketType, payload, connectionId);
         }
         return new PostgreSQLAggregatedCommandPacket(payload);

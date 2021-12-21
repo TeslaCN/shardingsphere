@@ -17,6 +17,7 @@
 
 package org.apache.shardingsphere.proxy.frontend.postgresql.command.query.extended.bind;
 
+import io.vertx.core.Future;
 import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.extended.PostgreSQLPreparedStatement;
@@ -43,6 +44,19 @@ public final class PostgreSQLComBindExecutor implements CommandExecutor {
     private final PostgreSQLComBindPacket packet;
     
     private final ConnectionSession connectionSession;
+    
+    @Override
+    public Future<Collection<DatabasePacket<?>>> executeFuture() {
+        try {
+            PostgreSQLPreparedStatement preparedStatement = PostgreSQLPreparedStatementRegistry.getInstance().get(connectionSession.getConnectionId(), packet.getStatementId());
+            return connectionContext.createPortal(packet.getPortal(), preparedStatement, packet.getParameters(), packet.getResultFormats(), connectionSession.getBackendConnection()).executeFuture()
+                    .compose(unused -> Future.succeededFuture(Collections.singletonList(new PostgreSQLBindCompletePacket())));
+            // CHECKSTYLE:OFF
+        } catch (final Exception ex) {
+            // CHECKSTYLE:ON
+            return Future.failedFuture(ex);
+        }
+    }
     
     @Override
     public Collection<DatabasePacket<?>> execute() throws SQLException {

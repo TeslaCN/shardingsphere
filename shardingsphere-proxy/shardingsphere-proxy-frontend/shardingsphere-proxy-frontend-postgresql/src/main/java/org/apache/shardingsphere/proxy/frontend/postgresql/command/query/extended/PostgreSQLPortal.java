@@ -17,6 +17,7 @@
 
 package org.apache.shardingsphere.proxy.frontend.postgresql.command.query.extended;
 
+import io.vertx.core.Future;
 import lombok.Getter;
 import org.apache.shardingsphere.db.protocol.binary.BinaryCell;
 import org.apache.shardingsphere.db.protocol.postgresql.constant.PostgreSQLValueFormat;
@@ -31,6 +32,7 @@ import org.apache.shardingsphere.distsql.parser.statement.DistSQLStatement;
 import org.apache.shardingsphere.infra.binder.SQLStatementContextFactory;
 import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
 import org.apache.shardingsphere.infra.database.type.DatabaseTypeRegistry;
+import org.apache.shardingsphere.proxy.backend.communication.BackendConnection;
 import org.apache.shardingsphere.proxy.backend.communication.DatabaseCommunicationEngine;
 import org.apache.shardingsphere.proxy.backend.communication.DatabaseCommunicationEngineFactory;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.JDBCBackendConnection;
@@ -69,12 +71,12 @@ public final class PostgreSQLPortal {
     
     private final TextProtocolBackendHandler textProtocolBackendHandler;
     
-    private final JDBCBackendConnection backendConnection;
+    private final BackendConnection backendConnection;
     
     private ResponseHeader responseHeader;
     
     public PostgreSQLPortal(final PostgreSQLPreparedStatement preparedStatement, final List<Object> parameters, final List<PostgreSQLValueFormat> resultFormats,
-                            final JDBCBackendConnection backendConnection) throws SQLException {
+                            final BackendConnection backendConnection) throws SQLException {
         this.sqlStatement = preparedStatement.getSqlStatement();
         this.resultFormats = resultFormats;
         this.backendConnection = backendConnection;
@@ -89,6 +91,18 @@ public final class PostgreSQLPortal {
         databaseCommunicationEngine = DatabaseCommunicationEngineFactory.getInstance().newBinaryProtocolInstance(sqlStatementContext, 
                 preparedStatement.getSql(), parameters, backendConnection);
         textProtocolBackendHandler = null;
+    }
+    
+    /**
+     * Execute portal and return future.
+     *
+     * @return future
+     */
+    public Future<Void> executeFuture() {
+        return (null != databaseCommunicationEngine ? databaseCommunicationEngine.executeFuture() : textProtocolBackendHandler.executeFuture()).compose(result -> {
+            responseHeader = result;
+            return Future.succeededFuture();
+        });
     }
     
     /**
@@ -182,7 +196,9 @@ public final class PostgreSQLPortal {
      * Suspend the portal.
      */
     public void suspend() {
-        backendConnection.markResourceInUse(databaseCommunicationEngine);
+        if (backendConnection instanceof JDBCBackendConnection) {
+            ((JDBCBackendConnection) backendConnection).markResourceInUse(databaseCommunicationEngine);
+        }
     }
     
     /**
@@ -192,7 +208,9 @@ public final class PostgreSQLPortal {
      */
     public void close() throws SQLException {
         if (null != databaseCommunicationEngine) {
-            backendConnection.unmarkResourceInUse(databaseCommunicationEngine);
+            if (backendConnection instanceof JDBCBackendConnection) {
+                ((JDBCBackendConnection) backendConnection).unmarkResourceInUse(databaseCommunicationEngine);
+            }
         }
         if (null != textProtocolBackendHandler) {
             textProtocolBackendHandler.close();

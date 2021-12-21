@@ -45,7 +45,7 @@ public final class PostgreSQLComParsePacket extends PostgreSQLCommandPacket {
     public PostgreSQLComParsePacket(final PostgreSQLPacketPayload payload) {
         payload.readInt4();
         statementId = payload.readStringNul();
-        sql = alterSQLToJDBCStyle(payload.readStringNul());
+        sql = payload.readStringNul();
         columnTypes = sql.isEmpty() ? Collections.emptyList() : getParameterTypes(payload);
     }
     
@@ -56,10 +56,6 @@ public final class PostgreSQLComParsePacket extends PostgreSQLCommandPacket {
             result.add(PostgreSQLColumnType.valueOf(payload.readInt4()));
         }
         return result;
-    }
-    
-    private String alterSQLToJDBCStyle(final String sql) {
-        return sql.replaceAll("\\$[0-9]+", "?");
     }
     
     @Override
