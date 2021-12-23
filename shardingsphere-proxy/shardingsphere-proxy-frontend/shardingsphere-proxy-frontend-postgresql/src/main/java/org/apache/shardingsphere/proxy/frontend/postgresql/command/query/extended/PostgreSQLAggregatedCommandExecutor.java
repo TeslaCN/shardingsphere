@@ -23,15 +23,16 @@ import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.PostgreSQLCommandPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.PostgreSQLCommandPacketFactory;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.PostgreSQLCommandPacketType;
+import org.apache.shardingsphere.db.protocol.postgresql.packet.generic.PostgreSQLReadyForQueryPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.payload.PostgreSQLPacketPayload;
 import org.apache.shardingsphere.proxy.backend.session.ConnectionSession;
 import org.apache.shardingsphere.proxy.frontend.command.executor.CommandExecutor;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLCommandExecutorFactory;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLConnectionContext;
+import org.apache.shardingsphere.proxy.frontend.postgresql.err.PostgreSQLErrPacketFactory;
 
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -46,17 +47,28 @@ public final class PostgreSQLAggregatedCommandExecutor implements CommandExecuto
     
     @Override
     public Future<Collection<DatabasePacket<?>>> executeFuture() {
-        return doExecuteFuture(new LinkedList<>(), executors.iterator());
+        return doExecuteFuture(new LinkedList<>());
     }
     
-    private Future<Collection<DatabasePacket<?>>> doExecuteFuture(final Collection<DatabasePacket<?>> result, Iterator<CommandExecutor> iterator) {
-        if (!iterator.hasNext()) {
+    private Future<Collection<DatabasePacket<?>>> doExecuteFuture(final Collection<DatabasePacket<?>> result) {
+        if (!payload.hasCompletePacket()) {
             return Future.succeededFuture(result);
         }
-        return iterator.next().executeFuture().compose(executeResult -> {
-            result.addAll(executeResult);
-            return doExecuteFuture(result, iterator);
-        });
+        PostgreSQLCommandPacketType commandPacketType = PostgreSQLCommandPacketType.valueOf(payload.readInt1());
+        PostgreSQLCommandPacket commandPacket = PostgreSQLCommandPacketFactory.getPostgreSQLCommandPacket(commandPacketType, payload, connectionSession.getConnectionId());
+        try {
+            CommandExecutor commandExecutor = PostgreSQLCommandExecutorFactory.getCommandExecutor(commandPacketType, commandPacket, connectionSession, connectionContext);
+            return commandExecutor.executeFuture().compose(executeResult -> {
+                result.addAll(executeResult);
+                return doExecuteFuture(result);
+            });
+            // CHECKSTYLE:OFF
+        } catch (Exception ex) {
+            // CHECKSTYLE:ON
+            result.add(PostgreSQLErrPacketFactory.newInstance(ex));
+            result.add(new PostgreSQLReadyForQueryPacket(connectionSession.getTransactionStatus().isInTransaction()));
+            return Future.succeededFuture(result);
+        }
     }
     
     @Override
