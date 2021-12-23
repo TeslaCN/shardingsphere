@@ -121,7 +121,9 @@ public final class FrontendChannelInboundHandler extends ChannelInboundHandlerAd
     @Override
     public void channelWritabilityChanged(final ChannelHandlerContext context) {
         if (context.channel().isWritable()) {
-            ((JDBCBackendConnection) connectionSession.getBackendConnection()).getResourceLock().doNotify();
+            if (connectionSession.getBackendConnection() instanceof JDBCBackendConnection) {
+                ((JDBCBackendConnection) connectionSession.getBackendConnection()).getResourceLock().doNotify();
+            }
         }
     }
 }
