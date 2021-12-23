@@ -21,6 +21,7 @@ import Keyword, PostgreSQLKeyword, Symbol, Literals;
 
 parameterMarker
     : QUESTION_ literalsType?
+    | POSITIONAL_PARAMETER_
     ;
 
 reservedKeyword
