@@ -17,6 +17,7 @@
 
 package org.apache.shardingsphere.proxy.frontend.command.executor;
 
+import io.vertx.core.Future;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
 
 import java.sql.SQLException;
@@ -25,7 +26,7 @@ import java.util.Collection;
 /**
  * Command executor.
  */
-public interface CommandExecutor {
+public interface CommandExecutor extends ReactiveCommandExecutor {
     
     /**
      * Execute command.
@@ -34,6 +35,28 @@ public interface CommandExecutor {
      * @throws SQLException SQL exception
      */
     Collection<DatabasePacket<?>> execute() throws SQLException;
+    
+    @Override
+    default Future<Collection<DatabasePacket<?>>> executeFuture() {
+        try {
+            Collection<DatabasePacket<?>> result = execute();
+            return Future.succeededFuture(result);
+            // CHECKSTYLE:OFF
+        } catch (final Exception ex) {
+            // CHECKSTYLE:ON
+            return Future.failedFuture(ex);
+        }
+    }
+    
+    @Override
+    default Future<Void> closeFuture() {
+        try {
+            close();
+            return Future.succeededFuture();
+        } catch (SQLException e) {
+            return Future.failedFuture(e);
+        }
+    }
     
     /**
      * Close command executor.

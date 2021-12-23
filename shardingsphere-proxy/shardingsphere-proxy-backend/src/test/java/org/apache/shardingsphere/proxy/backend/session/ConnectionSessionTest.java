@@ -19,7 +19,7 @@ package org.apache.shardingsphere.proxy.backend.session;
 
 import org.apache.shardingsphere.infra.exception.ShardingSphereException;
 import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.JDBCBackendConnection;
-import org.apache.shardingsphere.proxy.backend.communication.jdbc.transaction.BackendTransactionManager;
+import org.apache.shardingsphere.proxy.backend.communication.jdbc.transaction.JDBCBackendTransactionManager;
 import org.apache.shardingsphere.transaction.core.TransactionType;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,7 +59,7 @@ public final class ConnectionSessionTest {
     @Test(expected = ShardingSphereException.class)
     public void assertFailedSwitchTransactionTypeWhileBegin() throws SQLException {
         connectionSession.setCurrentSchema("schema");
-        BackendTransactionManager transactionManager = new BackendTransactionManager(backendConnection);
+        JDBCBackendTransactionManager transactionManager = new JDBCBackendTransactionManager(backendConnection);
         transactionManager.begin();
         connectionSession.getTransactionStatus().setTransactionType(TransactionType.XA);
     }
@@ -67,7 +67,7 @@ public final class ConnectionSessionTest {
     @Test(expected = ShardingSphereException.class)
     public void assertFailedSwitchSchemaWhileBegin() throws SQLException {
         connectionSession.setCurrentSchema("schema");
-        BackendTransactionManager transactionManager = new BackendTransactionManager(backendConnection);
+        JDBCBackendTransactionManager transactionManager = new JDBCBackendTransactionManager(backendConnection);
         transactionManager.begin();
         connectionSession.setCurrentSchema("newSchema");
     }

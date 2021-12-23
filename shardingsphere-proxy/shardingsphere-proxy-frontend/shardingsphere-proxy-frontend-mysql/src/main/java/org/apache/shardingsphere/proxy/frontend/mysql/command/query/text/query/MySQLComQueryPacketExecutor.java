@@ -17,11 +17,13 @@
 
 package org.apache.shardingsphere.proxy.frontend.mysql.command.query.text.query;
 
+import io.vertx.core.Future;
 import lombok.Getter;
 import org.apache.shardingsphere.db.protocol.mysql.constant.MySQLConstants;
 import org.apache.shardingsphere.db.protocol.mysql.packet.MySQLPacket;
 import org.apache.shardingsphere.db.protocol.mysql.packet.command.query.text.MySQLTextResultSetRowPacket;
 import org.apache.shardingsphere.db.protocol.mysql.packet.command.query.text.query.MySQLComQueryPacket;
+import org.apache.shardingsphere.db.protocol.mysql.packet.generic.MySQLEofPacket;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
 import org.apache.shardingsphere.infra.database.type.DatabaseTypeRegistry;
 import org.apache.shardingsphere.proxy.backend.response.header.ResponseHeader;
@@ -36,6 +38,8 @@ import org.apache.shardingsphere.proxy.frontend.mysql.command.query.builder.Resp
 
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -55,6 +59,25 @@ public final class MySQLComQueryPacketExecutor implements QueryCommandExecutor {
     public MySQLComQueryPacketExecutor(final MySQLComQueryPacket packet, final ConnectionSession connectionSession) throws SQLException {
         textProtocolBackendHandler = TextProtocolBackendHandlerFactory.newInstance(DatabaseTypeRegistry.getActualDatabaseType("MySQL"), packet.getSql(), Optional::empty, connectionSession);
         characterSet = connectionSession.getAttributeMap().attr(MySQLConstants.MYSQL_CHARACTER_SET_ATTRIBUTE_KEY).get().getId();
+    }
+    
+    @Override
+    public Future<Collection<DatabasePacket<?>>> executeFuture() {
+        return textProtocolBackendHandler.executeFuture().compose(responseHeader -> {
+            List<DatabasePacket<?>> result = new LinkedList<>(
+                    responseHeader instanceof QueryResponseHeader ? processQuery((QueryResponseHeader) responseHeader) : processUpdate((UpdateResponseHeader) responseHeader));
+            try {
+                if (ResponseType.QUERY == responseType) {
+                    while (next()) {
+                        result.add(getQueryRowPacket());
+                    }
+                    result.add(new MySQLEofPacket(++currentSequenceId));
+                }
+                return Future.succeededFuture(result);
+            } catch (final SQLException ex) {
+                return Future.failedFuture(ex);
+            }
+        });
     }
     
     @Override
