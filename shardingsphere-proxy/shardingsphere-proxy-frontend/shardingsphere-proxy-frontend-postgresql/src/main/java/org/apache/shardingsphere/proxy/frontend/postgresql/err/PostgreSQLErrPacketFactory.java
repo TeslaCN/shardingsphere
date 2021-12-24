@@ -18,6 +18,7 @@
 package org.apache.shardingsphere.proxy.frontend.postgresql.err;
 
 import com.google.common.base.Strings;
+import io.vertx.pgclient.PgException;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.apache.shardingsphere.db.protocol.postgresql.constant.PostgreSQLErrorCode;
@@ -61,6 +62,9 @@ public final class PostgreSQLErrPacketFactory {
         if (cause instanceof PostgreSQLAuthenticationException) {
             return PostgreSQLErrorResponsePacket.newBuilder(PostgreSQLMessageSeverityLevel.FATAL, ((PostgreSQLAuthenticationException) cause).getErrorCode(), cause.getMessage()).build();
         }
+        if (cause instanceof PgException) {
+            return createErrorResponsePacket((PgException) cause);
+        }
         // TODO PostgreSQL need consider FrontendConnectionLimitException
         return createErrorResponsePacketForUnknownException(cause);
     }
@@ -78,6 +82,13 @@ public final class PostgreSQLErrPacketFactory {
                 .internalQueryAndInternalPosition(serverErrorMessage.getInternalQuery(), serverErrorMessage.getInternalPosition()).where(serverErrorMessage.getWhere())
                 .schemaName(serverErrorMessage.getSchema()).tableName(serverErrorMessage.getTable()).columnName(serverErrorMessage.getColumn()).dataTypeName(serverErrorMessage.getDatatype())
                 .constraintName(serverErrorMessage.getConstraint()).file(serverErrorMessage.getFile()).line(serverErrorMessage.getLine()).routine(serverErrorMessage.getRoutine()).build();
+    }
+    
+    private static PostgreSQLErrorResponsePacket createErrorResponsePacket(final PgException ex) {
+        return PostgreSQLErrorResponsePacket.newBuilder(ex.getSeverity(), ex.getCode(), ex.getMessage())
+                .detail(ex.getDetail()).hint(ex.getHint()).where(ex.getWhere())
+                .schemaName(ex.getSchema()).tableName(ex.getTable()).columnName(ex.getColumn()).dataTypeName(ex.getDataType())
+                .constraintName(ex.getConstraint()).file(ex.getFile()).routine(ex.getRoutine()).build();
     }
     
     private static PostgreSQLErrorResponsePacket createErrorResponsePacketForUnknownException(final Exception cause) {
