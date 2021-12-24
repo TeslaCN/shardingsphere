@@ -49,7 +49,7 @@ public class InsertValue {
     private String getValue(final int index) {
         ExpressionSegment expressionSegment = values.get(index);
         if (expressionSegment instanceof ParameterMarkerExpressionSegment) {
-            return "?";
+            return ((ParameterMarkerExpressionSegment) expressionSegment).getAlias().orElse("?");
         } else if (expressionSegment instanceof LiteralExpressionSegment) {
             Object literals = ((LiteralExpressionSegment) expressionSegment).getLiterals();
             return literals instanceof String ? "'" + ((LiteralExpressionSegment) expressionSegment).getLiterals() + "'" : literals.toString();

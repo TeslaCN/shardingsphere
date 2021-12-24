@@ -311,7 +311,12 @@ public abstract class PostgreSQLStatementSQLVisitor extends PostgreSQLStatementB
             return visit(ctx.columnref());
         }
         if (null != ctx.parameterMarker()) {
-            return new ParameterMarkerExpressionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ((ParameterMarkerValue) visit(ctx.parameterMarker())).getValue());
+            ParameterMarkerExpressionSegment result = new ParameterMarkerExpressionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
+                    ((ParameterMarkerValue) visit(ctx.parameterMarker())).getValue());
+            if (null != ctx.parameterMarker().POSITIONAL_PARAMETER_()) {
+                result.setAlias(new AliasSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), new IdentifierValue(ctx.parameterMarker().POSITIONAL_PARAMETER_().getText())));
+            }
+            return result;
         }
         if (null != ctx.aexprConst()) {
             ASTNode astNode = visit(ctx.aexprConst());
