@@ -24,9 +24,23 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-public class UnspecifiedTypeListTuple extends ListTuple {
+/**
+ * List tuple supports unspecified type in String.
+ */
+public final class UnspecifiedTypeListTuple extends ListTuple {
     
-    private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss[.S[S[S[S[S[S]]]]]][' '][XXX[XX]]");
+    private static final DateTimeFormatter LOCAL_DATE_TIME_FORMATTER;
+    
+    static {
+        LOCAL_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(
+                "[yyyy-MM-dd][yyyy_MM_dd][MM/dd/yy][yyyyMMdd][yyMMdd]" +
+                        "['T'][ ]" +
+                        "[HH:mm:ss][HHmmss][HH:mm][HHmm]" +
+                        "[.SSSSSS][.SSSSS][.SSSS][.SSS][.SS][.S]" +
+                        "[ ]" +
+                        "[XXXXX][XXXX][XXX][XX][X]"
+        );
+    }
     
     public UnspecifiedTypeListTuple(final List<Object> list) {
         super(list);
@@ -40,7 +54,7 @@ public class UnspecifiedTypeListTuple extends ListTuple {
         } else if (val instanceof OffsetDateTime) {
             return ((OffsetDateTime) val).toLocalDateTime();
         } else if (val instanceof String) {
-            return LocalDateTime.from(dateTimeFormatter.parse((CharSequence) val));
+            return LocalDateTime.from(LOCAL_DATE_TIME_FORMATTER.parse((CharSequence) val));
         } else {
             return (LocalDateTime) val;
         }
