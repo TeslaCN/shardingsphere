@@ -23,7 +23,6 @@ import io.vertx.mysqlclient.impl.protocol.ColumnDefinition;
 import io.vertx.pgclient.impl.codec.VertxPostgreSQLQueryResultMetaData;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
-import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.desc.ColumnDescriptor;
 import org.apache.shardingsphere.infra.executor.kernel.model.ExecutorCallback;
 import org.apache.shardingsphere.infra.executor.sql.execute.result.ExecuteResult;
@@ -48,7 +47,7 @@ public final class VertxExecutorCallback implements ExecutorCallback<VertxExecut
     public Collection<Future<ExecuteResult>> execute(final Collection<VertxExecutionUnit> inputs, final boolean isTrunkThread, final Map<String, Object> dataMap) throws SQLException {
         List<Future<ExecuteResult>> result = new ArrayList<>(inputs.size());
         for (VertxExecutionUnit each : inputs) {
-            Future<RowSet<Row>> future = each.getStorageResource().compose(preparedQuery -> preparedQuery.execute(Tuple.from(each.getExecutionUnit().getSqlUnit().getParameters())));
+            Future<RowSet<Row>> future = each.getStorageResource().compose(preparedQuery -> preparedQuery.execute(new UnspecifiedTypeListTuple(each.getExecutionUnit().getSqlUnit().getParameters())));
             result.add(future.compose(this::handleResult));
         }
         return result;

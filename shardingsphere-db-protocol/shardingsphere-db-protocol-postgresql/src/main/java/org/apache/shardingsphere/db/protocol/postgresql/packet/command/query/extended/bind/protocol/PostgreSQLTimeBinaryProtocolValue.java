@@ -20,6 +20,7 @@ package org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.ex
 import org.apache.shardingsphere.db.protocol.postgresql.payload.PostgreSQLPacketPayload;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 /**
  * Binary protocol value for time for PostgreSQL.
@@ -38,6 +39,10 @@ public final class PostgreSQLTimeBinaryProtocolValue implements PostgreSQLBinary
     
     @Override
     public void write(final PostgreSQLPacketPayload payload, final Object value) {
-        payload.writeInt8(PostgreSQLBinaryTimestampUtils.toPostgreSQLTime((Timestamp) value, false));
+        if (value instanceof Timestamp) {
+            payload.writeInt8(PostgreSQLBinaryTimestampUtils.toPostgreSQLTime((Timestamp) value, false));
+        } else if (value instanceof LocalDateTime) {
+            payload.writeInt8(PostgreSQLBinaryTimestampUtils.toPostgreSQLTime((LocalDateTime) value, false));
+        }
     }
 }
