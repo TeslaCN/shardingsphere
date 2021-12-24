@@ -21,6 +21,9 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
@@ -39,8 +42,28 @@ public final class PostgreSQLBinaryTimestampUtils {
      * @return PostgreSQL time
      */
     public static long toPostgreSQLTime(final Timestamp timestamp, final boolean withTimeZone) {
-        long millis = timestamp.getTime() - (timestamp.getNanos() / 1000000) + (!withTimeZone ? TimeZone.getDefault().getRawOffset() : 0);
-        long nanos = timestamp.getNanos() / 1000;
+        long millis = timestamp.getTime();
+        int nano = timestamp.getNanos();
+        return toPostgreSQLTime(millis, nano, withTimeZone);
+    }
+    
+    /**
+     * Convert LocalDateTime to PostgreSQL time.
+     *
+     * @param localDateTime local date time
+     * @param withTimeZone with time zone
+     * @return PostgreSQL time
+     */
+    public static long toPostgreSQLTime(final LocalDateTime localDateTime, final boolean withTimeZone) {
+        Instant instant = localDateTime.atZone(ZoneId.systemDefault()).toInstant();
+        long millis = instant.toEpochMilli();
+        int nano = instant.getNano();
+        return toPostgreSQLTime(millis, nano, withTimeZone);
+    }
+    
+    private static long toPostgreSQLTime(final long time, final int nano, final boolean withTimeZone) {
+        long millis = time - (nano / 1000000) + (!withTimeZone ? TimeZone.getDefault().getRawOffset() : 0);
+        long nanos = nano / 1000;
         long pgSeconds = convertJavaEpochToPgEpoch(millis / 1000L);
         if (nanos >= 1000000) {
             nanos -= 1000000;
