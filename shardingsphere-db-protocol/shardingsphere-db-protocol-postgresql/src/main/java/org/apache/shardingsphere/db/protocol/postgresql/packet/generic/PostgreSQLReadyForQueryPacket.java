@@ -17,7 +17,6 @@
 
 package org.apache.shardingsphere.db.protocol.postgresql.packet.generic;
 
-import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.identifier.PostgreSQLIdentifierPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.identifier.PostgreSQLIdentifierTag;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.identifier.PostgreSQLMessagePacketType;
@@ -26,21 +25,27 @@ import org.apache.shardingsphere.db.protocol.postgresql.payload.PostgreSQLPacket
 /**
  * Ready for query packet for PostgreSQL.
  */
-@RequiredArgsConstructor
 public final class PostgreSQLReadyForQueryPacket implements PostgreSQLIdentifierPacket {
     
     private static final char IN_TRANSACTION = 'T';
     
     private static final char NOT_IN_TRANSACTION = 'I';
     
-    // TODO consider about TRANSACTION_FAILED
     private static final char TRANSACTION_FAILED = 'E';
     
-    private final boolean isInTransaction;
+    private final char status;
+    
+    public PostgreSQLReadyForQueryPacket(final boolean isInTransaction) {
+        this(isInTransaction, false);
+    }
+    
+    public PostgreSQLReadyForQueryPacket(final boolean isInTransaction, final boolean errorOccurred) {
+        status = isInTransaction ? (errorOccurred ? TRANSACTION_FAILED : IN_TRANSACTION) : NOT_IN_TRANSACTION;
+    }
     
     @Override
     public void write(final PostgreSQLPacketPayload payload) {
-        payload.writeInt1(isInTransaction ? IN_TRANSACTION : NOT_IN_TRANSACTION);
+        payload.writeInt1(status);
     }
     
     @Override
