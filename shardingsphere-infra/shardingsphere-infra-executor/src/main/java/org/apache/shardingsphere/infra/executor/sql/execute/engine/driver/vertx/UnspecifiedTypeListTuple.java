@@ -22,7 +22,9 @@ import io.vertx.sqlclient.impl.ListTuple;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.RandomAccess;
 
 /**
  * List tuple supports unspecified type in String.
@@ -43,7 +45,7 @@ public final class UnspecifiedTypeListTuple extends ListTuple {
     }
     
     public UnspecifiedTypeListTuple(final List<Object> list) {
-        super(list);
+        super((list instanceof RandomAccess) ? list : new ArrayList<>(list));
     }
     
     @Override
