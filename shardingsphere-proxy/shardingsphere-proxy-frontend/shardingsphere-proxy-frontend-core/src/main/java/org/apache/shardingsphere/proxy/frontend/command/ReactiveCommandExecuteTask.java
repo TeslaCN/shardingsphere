@@ -46,7 +46,7 @@ import java.util.Optional;
 @SuppressWarnings("unchecked")
 @Slf4j
 @RequiredArgsConstructor
-public final class ReactiveCommandExecuteTask implements Runnable {
+public final class ReactiveCommandExecuteTask {
     
     private final DatabaseProtocolFrontendEngine databaseProtocolFrontendEngine;
     
@@ -60,16 +60,21 @@ public final class ReactiveCommandExecuteTask implements Runnable {
     
     private volatile boolean writeInEventLoop;
     
-    @Override
-    public void run() {
+    /**
+     * Execute future.
+     *
+     * @return future of task
+     */
+    public Future<Void> executeFuture() {
         PacketPayload payload = databaseProtocolFrontendEngine.getCodecEngine().createPacketPayload((ByteBuf) message, context.channel().attr(CommonConstants.CHARSET_ATTRIBUTE_KEY).get());
         try {
-            ((Future<Void>) connectionSession.getBackendConnection().prepareForTaskExecution()).compose(unused -> executeCommand(payload).eventually(unused0 -> closeResources(payload)));
+            return ((Future<Void>) connectionSession.getBackendConnection().prepareForTaskExecution()).compose(unused -> executeCommand(payload).eventually(unused0 -> closeResources(payload)));
             // CHECKSTYLE:OFF
         } catch (final Exception ex) {
             // CHECKSTYLE:ON
             processException(ex);
             closeResources(payload);
+            return Future.failedFuture(ex);
         }
     }
     

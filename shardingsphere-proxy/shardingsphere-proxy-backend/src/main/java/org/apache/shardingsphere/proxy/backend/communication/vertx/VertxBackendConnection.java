@@ -29,6 +29,7 @@ import io.vertx.sqlclient.SqlClient;
 import io.vertx.sqlclient.SqlConnection;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.ConnectionMode;
 import org.apache.shardingsphere.infra.executor.sql.prepare.driver.vertx.ExecutorVertxManager;
 import org.apache.shardingsphere.infra.executor.sql.prepare.driver.vertx.VertxExecutionContext;
@@ -53,6 +54,9 @@ public final class VertxBackendConnection implements BackendConnection<Future<Vo
     private final List<ConnectionPostProcessor<Future<SqlConnection>>> connectionPostProcessors = new LinkedList<>();
     
     private final Multimap<String, Future<SqlConnection>> cachedConnections = LinkedHashMultimap.create();
+    
+    @Setter
+    private Future<Void> previousFuture = Future.succeededFuture();
     
     @Override
     public List<Future<? extends SqlClient>> getConnections(final String dataSourceName, final int connectionSize, final ConnectionMode connectionMode) {

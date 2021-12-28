@@ -18,6 +18,7 @@
 package org.apache.shardingsphere.proxy.frontend.state.impl;
 
 import io.netty.channel.ChannelHandlerContext;
+import org.apache.shardingsphere.proxy.backend.communication.vertx.VertxBackendConnection;
 import org.apache.shardingsphere.proxy.backend.session.ConnectionSession;
 import org.apache.shardingsphere.proxy.frontend.command.ReactiveCommandExecuteTask;
 import org.apache.shardingsphere.proxy.frontend.spi.DatabaseProtocolFrontendEngine;
@@ -30,6 +31,10 @@ public final class ReactiveOKProxyState implements ProxyState {
     
     @Override
     public void execute(final ChannelHandlerContext context, final Object message, final DatabaseProtocolFrontendEngine databaseProtocolFrontendEngine, final ConnectionSession connectionSession) {
-        context.executor().execute(new ReactiveCommandExecuteTask(databaseProtocolFrontendEngine, connectionSession, context, message));
+        VertxBackendConnection vertxBackendConnection = (VertxBackendConnection) connectionSession.getBackendConnection();
+        vertxBackendConnection.setPreviousFuture(vertxBackendConnection.getPreviousFuture().compose(unused -> {
+            ReactiveCommandExecuteTask task = new ReactiveCommandExecuteTask(databaseProtocolFrontendEngine, connectionSession, context, message);
+            return task.executeFuture();
+        }));
     }
 }
