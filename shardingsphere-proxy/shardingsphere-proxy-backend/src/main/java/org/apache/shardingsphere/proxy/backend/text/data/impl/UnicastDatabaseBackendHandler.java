@@ -17,11 +17,11 @@
 
 package org.apache.shardingsphere.proxy.backend.text.data.impl;
 
+import io.vertx.core.Future;
 import lombok.RequiredArgsConstructor;
 import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
 import org.apache.shardingsphere.proxy.backend.communication.DatabaseCommunicationEngine;
 import org.apache.shardingsphere.proxy.backend.communication.DatabaseCommunicationEngineFactory;
-import org.apache.shardingsphere.proxy.backend.communication.jdbc.connection.JDBCBackendConnection;
 import org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 import org.apache.shardingsphere.proxy.backend.exception.NoDatabaseSelectedException;
 import org.apache.shardingsphere.proxy.backend.exception.RuleNotExistedException;
@@ -50,6 +50,21 @@ public final class UnicastDatabaseBackendHandler implements DatabaseBackendHandl
     private DatabaseCommunicationEngine databaseCommunicationEngine;
     
     @Override
+    public Future<ResponseHeader> executeFuture() {
+        String originSchema = connectionSession.getSchemaName();
+        String schemaName = null == originSchema ? getFirstSchemaName() : originSchema;
+        if (!ProxyContext.getInstance().getMetaData(schemaName).hasDataSource()) {
+            throw new RuleNotExistedException();
+        }
+        connectionSession.setCurrentSchema(schemaName);
+        databaseCommunicationEngine = databaseCommunicationEngineFactory.newTextProtocolInstance(sqlStatementContext, sql, connectionSession.getBackendConnection());
+        return databaseCommunicationEngine.executeFuture().eventually(unused -> {
+            connectionSession.setCurrentSchema(originSchema);
+            return Future.succeededFuture();
+        });
+    }
+    
+    @Override
     public ResponseHeader execute() throws SQLException {
         String originSchema = connectionSession.getDefaultSchemaName();
         String schemaName = null == originSchema ? getFirstSchemaName() : originSchema;
@@ -58,7 +73,7 @@ public final class UnicastDatabaseBackendHandler implements DatabaseBackendHandl
         }
         try {
             connectionSession.setCurrentSchema(schemaName);
-            databaseCommunicationEngine = databaseCommunicationEngineFactory.newTextProtocolInstance(sqlStatementContext, sql, (JDBCBackendConnection) connectionSession.getBackendConnection());
+            databaseCommunicationEngine = databaseCommunicationEngineFactory.newTextProtocolInstance(sqlStatementContext, sql, connectionSession.getBackendConnection());
             return databaseCommunicationEngine.execute();
         } finally {
             connectionSession.setCurrentSchema(originSchema);
