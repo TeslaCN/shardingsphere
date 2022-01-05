@@ -77,7 +77,7 @@ public final class TransactionBackendHandler implements TextProtocolBackendHandl
                 future = transactionManager.setSavepoint(((SavepointStatement) tclStatement).getSavepointName());
                 break;
             case ROLLBACK_TO_SAVEPOINT:
-                future = transactionManager.rollbackTo(((RollbackToSavepointStatement) tclStatement).getSavepointName());
+                future = transactionManager.rollbackTo(((RollbackStatement) tclStatement).getSavepointName().get());
                 break;
             case RELEASE_SAVEPOINT:
                 future = transactionManager.releaseSavepoint(((ReleaseSavepointStatement) tclStatement).getSavepointName());

@@ -56,11 +56,17 @@ public final class SchemaAssignedDatabaseBackendHandler implements DatabaseBacke
     
     @Override
     public Future<ResponseHeader> executeFuture() {
-        prepareDatabaseCommunicationEngine();
-        return databaseCommunicationEngine.executeFuture();
+        try {
+            prepareDatabaseCommunicationEngine();
+            return databaseCommunicationEngine.executeFuture();
+            // CHECKSTYLE:OFF
+        } catch (final Exception ex) {
+            // CHECKSTYLE:ON
+            return Future.failedFuture(ex);
+        }
     }
     
-    private void prepareDatabaseCommunicationEngine() {
+    private void prepareDatabaseCommunicationEngine() throws RequiredResourceMissedException {
         if (!ProxyContext.getInstance().getMetaData(connectionSession.getSchemaName()).hasDataSource()) {
             throw new RequiredResourceMissedException(connectionSession.getSchemaName());
         }
