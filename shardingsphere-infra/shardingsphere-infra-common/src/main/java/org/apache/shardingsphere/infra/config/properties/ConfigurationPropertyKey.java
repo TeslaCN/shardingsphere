@@ -120,9 +120,9 @@ public enum ConfigurationPropertyKey implements TypedPropertyKey {
     SQL_FEDERATION_ENABLED("sql-federation-enabled", String.valueOf(Boolean.FALSE), boolean.class),
     
     /**
-     * Whether enable experimental reactive backend.
+     * Proxy backend driver type. Default driver is JDBC.
      */
-    EXPERIMENTAL_REACTIVE_BACKEND_ENABLED("experimental-reactive-backend-enabled", String.valueOf(Boolean.FALSE), boolean.class);
+    PROXY_BACKEND_DRIVER_TYPE("proxy-backend-driver-type", "JDBC", String.class);
     
     private final String key;
     

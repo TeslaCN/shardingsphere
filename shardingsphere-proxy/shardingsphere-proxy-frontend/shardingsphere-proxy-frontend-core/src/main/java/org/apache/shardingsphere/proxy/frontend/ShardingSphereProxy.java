@@ -84,7 +84,8 @@ public final class ShardingSphereProxy {
     }
     
     private EventLoopGroup getWorkerGroup() {
-        boolean reactiveBackendEnabled = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps().getValue(ConfigurationPropertyKey.EXPERIMENTAL_REACTIVE_BACKEND_ENABLED);
+        String driverType = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps().getValue(ConfigurationPropertyKey.PROXY_BACKEND_DRIVER_TYPE);
+        boolean reactiveBackendEnabled = "JDBC".equalsIgnoreCase(driverType);
         if (reactiveBackendEnabled) {
             log.warn("\n██     ██  █████  ██████  ███    ██ ██ ███    ██  ██████  \n"
                     + "██     ██ ██   ██ ██   ██ ████   ██ ██ ████   ██ ██       \n"

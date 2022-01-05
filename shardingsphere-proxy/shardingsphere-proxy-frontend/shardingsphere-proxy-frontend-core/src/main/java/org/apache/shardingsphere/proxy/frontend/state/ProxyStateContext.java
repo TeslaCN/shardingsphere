@@ -42,7 +42,7 @@ public final class ProxyStateContext {
     private static final Map<StateType, ProxyState> STATES = new ConcurrentHashMap<>(3, 1);
     
     static {
-        boolean reactiveBackendEnabled = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps().getValue(ConfigurationPropertyKey.EXPERIMENTAL_REACTIVE_BACKEND_ENABLED);
+        boolean reactiveBackendEnabled = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps().getValue(ConfigurationPropertyKey.PROXY_BACKEND_DRIVER_TYPE);
         STATES.put(StateType.OK, reactiveBackendEnabled ? new ReactiveOKProxyState() : new OKProxyState());
         STATES.put(StateType.LOCK, new LockProxyState());
         STATES.put(StateType.CIRCUIT_BREAK, new CircuitBreakProxyState());

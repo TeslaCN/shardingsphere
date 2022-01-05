@@ -15,21 +15,27 @@
  * limitations under the License.
  */
 
-package org.apache.shardingsphere.proxy.frontend.state.impl;
+package org.apache.shardingsphere.proxy.frontend.reactive.state.impl;
 
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.shardingsphere.proxy.backend.session.ConnectionSession;
-import org.apache.shardingsphere.proxy.frontend.command.ReactiveCommandExecuteTask;
+import org.apache.shardingsphere.proxy.frontend.reactive.command.ReactiveCommandExecuteTask;
 import org.apache.shardingsphere.proxy.frontend.spi.DatabaseProtocolFrontendEngine;
 import org.apache.shardingsphere.proxy.frontend.state.ProxyState;
+import org.apache.shardingsphere.spi.typed.TypedSPI;
 
 /**
  * Reactive OK proxy state.
  */
-public final class ReactiveOKProxyState implements ProxyState {
+public final class ReactiveOKProxyState implements ProxyState, TypedSPI {
     
     @Override
     public void execute(final ChannelHandlerContext context, final Object message, final DatabaseProtocolFrontendEngine databaseProtocolFrontendEngine, final ConnectionSession connectionSession) {
         context.executor().execute(new ReactiveCommandExecuteTask(databaseProtocolFrontendEngine, connectionSession, context, message));
+    }
+    
+    @Override
+    public String getType() {
+        return "Experimental-Vert.x";
     }
 }

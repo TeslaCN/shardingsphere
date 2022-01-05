@@ -15,26 +15,44 @@
  * limitations under the License.
  */
 
-package org.apache.shardingsphere.proxy.frontend.command.executor;
+package org.apache.shardingsphere.proxy.frontend.reactive.command.executor;
 
 import io.vertx.core.Future;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
+import org.apache.shardingsphere.proxy.frontend.command.executor.CommandExecutor;
 
+import java.sql.SQLException;
 import java.util.Collection;
 
-public interface ReactiveCommandExecutor {
+public interface ReactiveCommandExecutor extends CommandExecutor {
     
     /**
      * Execute command and return future.
      *
      * @return future
      */
-    Future<Collection<DatabasePacket<?>>> executeFuture();
+    default Future<Collection<DatabasePacket<?>>> executeFuture() {
+        try {
+            Collection<DatabasePacket<?>> result = execute();
+            return Future.succeededFuture(result);
+            // CHECKSTYLE:OFF
+        } catch (final Exception ex) {
+            // CHECKSTYLE:ON
+            return Future.failedFuture(ex);
+        }
+    }
     
     /**
      * Close future.
      *
      * @return close future
      */
-    Future<Void> closeFuture();
+    default Future<Void> closeFuture() {
+        try {
+            close();
+            return Future.succeededFuture();
+        } catch (SQLException e) {
+            return Future.failedFuture(e);
+        }
+    }
 }

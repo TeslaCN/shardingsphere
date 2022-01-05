@@ -57,7 +57,7 @@ public final class FrontendChannelInboundHandler extends ChannelInboundHandlerAd
         this.databaseProtocolFrontendEngine = databaseProtocolFrontendEngine;
         connectionSession = new ConnectionSession(getTransactionRule().getDefaultType(), channel);
         // TODO Decouple JDBCBackendConnection from this class.
-        boolean reactiveBackendEnabled = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps().getValue(ConfigurationPropertyKey.EXPERIMENTAL_REACTIVE_BACKEND_ENABLED);
+        boolean reactiveBackendEnabled = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps().getValue(ConfigurationPropertyKey.PROXY_BACKEND_DRIVER_TYPE);
         BackendConnection backendConnection = reactiveBackendEnabled ? new VertxBackendConnection(connectionSession) : new JDBCBackendConnection(connectionSession);
         connectionSession.setBackendConnection(backendConnection);
     }

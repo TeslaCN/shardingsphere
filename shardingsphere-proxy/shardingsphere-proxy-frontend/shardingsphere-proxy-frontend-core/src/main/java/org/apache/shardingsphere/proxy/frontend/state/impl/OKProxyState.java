@@ -26,6 +26,7 @@ import org.apache.shardingsphere.proxy.frontend.executor.ConnectionThreadExecuto
 import org.apache.shardingsphere.proxy.frontend.executor.UserExecutorGroup;
 import org.apache.shardingsphere.proxy.frontend.spi.DatabaseProtocolFrontendEngine;
 import org.apache.shardingsphere.proxy.frontend.state.ProxyState;
+import org.apache.shardingsphere.spi.typed.TypedSPI;
 import org.apache.shardingsphere.transaction.core.TransactionType;
 
 import java.util.concurrent.ExecutorService;
@@ -33,7 +34,7 @@ import java.util.concurrent.ExecutorService;
 /**
  * OK proxy state.
  */
-public final class OKProxyState implements ProxyState {
+public final class OKProxyState implements ProxyState, TypedSPI {
     
     @Override
     public void execute(final ChannelHandlerContext context, final Object message, final DatabaseProtocolFrontendEngine databaseProtocolFrontendEngine, final ConnectionSession connectionSession) {
@@ -71,5 +72,10 @@ public final class OKProxyState implements ProxyState {
             default:
                 throw new IllegalArgumentException("The property proxy-backend-executor-suitable must be 'OLAP' or 'OLTP'");
         }
+    }
+    
+    @Override
+    public String getType() {
+        return "JDBC";
     }
 }
