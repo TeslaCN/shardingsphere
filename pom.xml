@@ -107,6 +107,7 @@
         <bytebuddy.version>1.11.18</bytebuddy.version>
         
         <vertx.version>4.2.3</vertx.version>
+        <scram.version>2.0</scram.version>
         
         <elasticjob.version>3.0.1</elasticjob.version>
         
@@ -474,7 +475,17 @@
                 <artifactId>vertx-mysql-client</artifactId>
                 <version>${vertx.version}</version>
             </dependency>
-            
+            <dependency>
+                <groupId>io.vertx</groupId>
+                <artifactId>vertx-pg-client</artifactId>
+                <version>${vertx.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ongres.scram</groupId>
+                <artifactId>client</artifactId>
+                <version>${scram.version}</version>
+            </dependency>
+    
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
