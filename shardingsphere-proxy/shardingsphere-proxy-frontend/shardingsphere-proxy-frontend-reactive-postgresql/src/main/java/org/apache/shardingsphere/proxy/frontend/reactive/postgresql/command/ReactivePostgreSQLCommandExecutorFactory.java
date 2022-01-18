@@ -24,11 +24,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.shardingsphere.db.protocol.packet.CommandPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.PostgreSQLCommandPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.PostgreSQLCommandPacketType;
+import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.simple.PostgreSQLComQueryPacket;
 import org.apache.shardingsphere.proxy.backend.session.ConnectionSession;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLCommandExecutorFactory;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLConnectionContext;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLConnectionContextRegistry;
 import org.apache.shardingsphere.proxy.frontend.reactive.command.executor.ReactiveCommandExecutor;
+import org.apache.shardingsphere.proxy.frontend.reactive.postgresql.command.query.simple.ReactivePostgreSQLComQueryExecutor;
 import org.apache.shardingsphere.proxy.frontend.reactive.wrap.WrappedReactiveCommandExecutor;
 
 import java.sql.SQLException;
@@ -54,7 +56,7 @@ public final class ReactivePostgreSQLCommandExecutorFactory {
         PostgreSQLConnectionContext connectionContext = PostgreSQLConnectionContextRegistry.getInstance().get(connectionSession.getConnectionId());
         switch (commandPacketType) {
             case SIMPLE_QUERY:
-                // TODO
+                return new ReactivePostgreSQLComQueryExecutor((PostgreSQLComQueryPacket) commandPacket, connectionSession);
             default:
                 return new WrappedReactiveCommandExecutor(PostgreSQLCommandExecutorFactory.newInstance(commandPacketType, (PostgreSQLCommandPacket) commandPacket, connectionSession, connectionContext));
         }
