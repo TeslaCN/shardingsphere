@@ -24,6 +24,9 @@ import org.apache.shardingsphere.infra.executor.sql.execute.result.query.QueryRe
 import java.sql.SQLException;
 import java.util.List;
 
+/**
+ * Query result meta data for Vert.x PostgreSQL.
+ */
 @RequiredArgsConstructor
 public final class VertxPostgreSQLQueryResultMetaData implements QueryResultMetaData {
     
