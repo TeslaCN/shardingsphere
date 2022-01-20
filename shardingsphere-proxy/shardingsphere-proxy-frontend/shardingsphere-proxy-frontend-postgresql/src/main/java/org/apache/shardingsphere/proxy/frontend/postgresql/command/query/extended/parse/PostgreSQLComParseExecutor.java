@@ -23,6 +23,7 @@ import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.ext
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.extended.PostgreSQLPreparedStatementRegistry;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.extended.parse.PostgreSQLComParsePacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.extended.parse.PostgreSQLParseCompletePacket;
+import org.apache.shardingsphere.infra.config.props.ConfigurationPropertyKey;
 import org.apache.shardingsphere.infra.database.type.DatabaseTypeRegistry;
 import org.apache.shardingsphere.infra.parser.ShardingSphereSQLParserEngine;
 import org.apache.shardingsphere.mode.metadata.MetaDataContexts;
@@ -37,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * PostgreSQL command parse executor.
@@ -44,16 +46,25 @@ import java.util.List;
 @RequiredArgsConstructor
 public final class PostgreSQLComParseExecutor implements CommandExecutor {
     
+    private static final Pattern JDBC_PLACEHOLDER_PATTERN = Pattern.compile("\\$[0-9]+");
+    
     private final PostgreSQLComParsePacket packet;
     
     private final ConnectionSession connectionSession;
     
     @Override
     public Collection<DatabasePacket<?>> execute() {
-        SQLStatement sqlStatement = parseSql(packet.getSql(), connectionSession.getSchemaName());
+        String driverType = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps().getValue(ConfigurationPropertyKey.PROXY_BACKEND_DRIVER_TYPE);
+        String sql = "ExperimentalVertx".equals(driverType) ? packet.getSql() : alterSQLToJDBCStyle(packet.getSql());
+        SQLStatement sqlStatement = parseSql(sql, connectionSession.getSchemaName());
         List<PostgreSQLColumnType> paddedColumnTypes = paddingColumnTypes(sqlStatement.getParameterCount(), packet.readParameterTypes());
-        PostgreSQLPreparedStatementRegistry.getInstance().register(connectionSession.getConnectionId(), packet.getStatementId(), packet.getSql(), sqlStatement, paddedColumnTypes);
+        PostgreSQLPreparedStatementRegistry.getInstance().register(connectionSession.getConnectionId(), packet.getStatementId(), sql, sqlStatement, paddedColumnTypes);
         return Collections.singletonList(PostgreSQLParseCompletePacket.getInstance());
+    }
+    
+    private String alterSQLToJDBCStyle(final String sql) {
+        // TODO This may replace the content by mistake, consider refactoring this.
+        return JDBC_PLACEHOLDER_PATTERN.matcher(sql).replaceAll("?");
     }
     
     private SQLStatement parseSql(final String sql, final String schemaName) {
