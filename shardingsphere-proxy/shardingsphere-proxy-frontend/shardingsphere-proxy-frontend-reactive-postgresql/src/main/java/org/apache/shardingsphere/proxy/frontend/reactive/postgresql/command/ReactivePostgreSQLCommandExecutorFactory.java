@@ -24,16 +24,22 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.shardingsphere.db.protocol.packet.CommandPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.PostgreSQLCommandPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.PostgreSQLCommandPacketType;
+import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.extended.PostgreSQLAggregatedCommandPacket;
+import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.extended.bind.PostgreSQLComBindPacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.simple.PostgreSQLComQueryPacket;
 import org.apache.shardingsphere.proxy.backend.session.ConnectionSession;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLCommandExecutorFactory;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLConnectionContext;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLConnectionContextRegistry;
 import org.apache.shardingsphere.proxy.frontend.reactive.command.executor.ReactiveCommandExecutor;
+import org.apache.shardingsphere.proxy.frontend.reactive.postgresql.command.query.extended.PostgreSQLAggregatedReactiveCommandExecutor;
+import org.apache.shardingsphere.proxy.frontend.reactive.postgresql.command.query.extended.bind.ReactivePostgreSQLComBindExecutor;
 import org.apache.shardingsphere.proxy.frontend.reactive.postgresql.command.query.simple.ReactivePostgreSQLComQueryExecutor;
 import org.apache.shardingsphere.proxy.frontend.reactive.wrap.WrappedReactiveCommandExecutor;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Reactive command executor factory for PostgreSQL.
@@ -50,15 +56,31 @@ public final class ReactivePostgreSQLCommandExecutorFactory {
      * @param connectionSession connection session
      * @return command executor
      */
-    @SneakyThrows(SQLException.class)
     public static ReactiveCommandExecutor newInstance(final PostgreSQLCommandPacketType commandPacketType, final CommandPacket commandPacket, final ConnectionSession connectionSession) {
         log.debug("Execute packet type: {}, value: {}", commandPacketType, commandPacket);
         PostgreSQLConnectionContext connectionContext = PostgreSQLConnectionContextRegistry.getInstance().get(connectionSession.getConnectionId());
+        if (!(commandPacket instanceof PostgreSQLAggregatedCommandPacket)) {
+            return getReactiveCommandExecutor(commandPacketType, (PostgreSQLCommandPacket) commandPacket, connectionSession, connectionContext);
+        }
+        PostgreSQLAggregatedCommandPacket aggregatedCommandPacket = (PostgreSQLAggregatedCommandPacket) commandPacket;
+        // TODO Batched inserts using Vert.x backend
+        List<ReactiveCommandExecutor> result = new ArrayList<>(aggregatedCommandPacket.getPackets().size());
+        for (PostgreSQLCommandPacket each : aggregatedCommandPacket.getPackets()) {
+            result.add(getReactiveCommandExecutor((PostgreSQLCommandPacketType) each.getIdentifier(), each, connectionSession, connectionContext));
+        }
+        return new PostgreSQLAggregatedReactiveCommandExecutor(result);
+    }
+    
+    @SneakyThrows(SQLException.class)
+    private static ReactiveCommandExecutor getReactiveCommandExecutor(final PostgreSQLCommandPacketType commandPacketType, final PostgreSQLCommandPacket commandPacket,
+                                                                      final ConnectionSession connectionSession, final PostgreSQLConnectionContext connectionContext) {
         switch (commandPacketType) {
             case SIMPLE_QUERY:
                 return new ReactivePostgreSQLComQueryExecutor((PostgreSQLComQueryPacket) commandPacket, connectionSession);
+            case BIND_COMMAND:
+                return new ReactivePostgreSQLComBindExecutor(connectionContext, (PostgreSQLComBindPacket) commandPacket, connectionSession);
             default:
-                return new WrappedReactiveCommandExecutor(PostgreSQLCommandExecutorFactory.newInstance(commandPacketType, (PostgreSQLCommandPacket) commandPacket, connectionSession, connectionContext));
+                return new WrappedReactiveCommandExecutor(PostgreSQLCommandExecutorFactory.newInstance(commandPacketType, commandPacket, connectionSession, connectionContext));
         }
     }
 }
