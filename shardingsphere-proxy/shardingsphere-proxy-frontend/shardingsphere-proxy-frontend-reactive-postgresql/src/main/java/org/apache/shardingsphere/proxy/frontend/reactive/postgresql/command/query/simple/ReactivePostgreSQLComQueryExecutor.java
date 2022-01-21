@@ -18,7 +18,6 @@
 package org.apache.shardingsphere.proxy.frontend.reactive.postgresql.command.query.simple;
 
 import io.vertx.core.Future;
-import lombok.Getter;
 import lombok.SneakyThrows;
 import org.apache.shardingsphere.db.protocol.packet.DatabasePacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.PostgreSQLPacket;
@@ -36,7 +35,6 @@ import org.apache.shardingsphere.proxy.backend.response.header.update.UpdateResp
 import org.apache.shardingsphere.proxy.backend.session.ConnectionSession;
 import org.apache.shardingsphere.proxy.backend.text.TextProtocolBackendHandler;
 import org.apache.shardingsphere.proxy.backend.text.TextProtocolBackendHandlerFactory;
-import org.apache.shardingsphere.proxy.frontend.command.executor.ResponseType;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLConnectionContext;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLConnectionContextRegistry;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.query.PostgreSQLCommand;
@@ -63,9 +61,6 @@ public final class ReactivePostgreSQLComQueryExecutor implements ReactiveCommand
     
     private final ConnectionSession connectionSession;
     
-    @Getter
-    private volatile ResponseType responseType;
-    
     @SneakyThrows(SQLException.class)
     public ReactivePostgreSQLComQueryExecutor(final PostgreSQLComQueryPacket comQueryPacket, final ConnectionSession connectionSession) {
         this.connectionSession = connectionSession;
@@ -79,8 +74,7 @@ public final class ReactivePostgreSQLComQueryExecutor implements ReactiveCommand
         return textProtocolBackendHandler.executeFuture().compose(responseHeader -> {
             try {
                 List<DatabasePacket<?>> result = new LinkedList<>();
-                if (!(responseHeader instanceof QueryResponseHeader)) {
-                    responseType = ResponseType.UPDATE;
+                if (responseHeader instanceof UpdateResponseHeader) {
                     result.add(createUpdatePacket((UpdateResponseHeader) responseHeader));
                 } else {
                     result.add(createRowDescriptionPacket((QueryResponseHeader) responseHeader));
@@ -101,7 +95,6 @@ public final class ReactivePostgreSQLComQueryExecutor implements ReactiveCommand
     
     private PostgreSQLRowDescriptionPacket createRowDescriptionPacket(final QueryResponseHeader queryResponseHeader) {
         Collection<PostgreSQLColumnDescription> columnDescriptions = createColumnDescriptions(queryResponseHeader);
-        responseType = ResponseType.QUERY;
         return new PostgreSQLRowDescriptionPacket(columnDescriptions.size(), columnDescriptions);
     }
     
