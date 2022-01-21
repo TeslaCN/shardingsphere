@@ -19,11 +19,15 @@ package org.apache.shardingsphere.infra.executor.sql.execute.engine.driver.vertx
 
 import io.vertx.core.Future;
 import io.vertx.mysqlclient.MySQLClient;
+import io.vertx.mysqlclient.impl.protocol.ColumnDefinition;
+import io.vertx.pgclient.impl.codec.VertxPostgreSQLQueryResultMetaData;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
+import io.vertx.sqlclient.desc.ColumnDescriptor;
 import org.apache.shardingsphere.infra.executor.sql.execute.result.ExecuteResult;
+import org.apache.shardingsphere.infra.executor.sql.execute.result.query.impl.driver.vertx.VertxMySQLQueryResultMetaData;
 import org.apache.shardingsphere.infra.executor.sql.execute.result.query.impl.driver.vertx.VertxQueryResult;
 import org.apache.shardingsphere.infra.executor.sql.execute.result.update.UpdateResult;
 import org.junit.Before;
@@ -40,7 +44,9 @@ import java.util.Collections;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -65,10 +71,36 @@ public final class VertxExecutorCallbackTest {
     }
     
     @Test
-    public void assertExecuteQuery() throws SQLException {
+    public void assertExecuteMySQLQuery() throws SQLException {
+        when(rowSet.columnDescriptors()).thenReturn(Collections.singletonList(mock(ColumnDefinition.class)));
         Collection<Future<ExecuteResult>> actual = callback.execute(Collections.singletonList(vertxExecutionUnit), true, Collections.emptyMap());
         assertThat(actual.size(), is(1));
-        assertThat(actual.iterator().next().result(), instanceOf(VertxQueryResult.class));
+        ExecuteResult actualExecuteResult = actual.iterator().next().result();
+        assertThat(actualExecuteResult, instanceOf(VertxQueryResult.class));
+        VertxQueryResult actualQueryResult = (VertxQueryResult) actualExecuteResult;
+        assertTrue(actualQueryResult.getMetaData() instanceof VertxMySQLQueryResultMetaData);
+    }
+    
+    @Test
+    public void assertExecutePostgreSQLQuery() throws SQLException {
+        when(rowSet.columnDescriptors()).thenReturn(Collections.singletonList(mock(ColumnDescriptor.class)));
+        Collection<Future<ExecuteResult>> actual = callback.execute(Collections.singletonList(vertxExecutionUnit), true, Collections.emptyMap());
+        assertThat(actual.size(), is(1));
+        ExecuteResult actualExecuteResult = actual.iterator().next().result();
+        assertThat(actualExecuteResult, instanceOf(VertxQueryResult.class));
+        VertxQueryResult actualQueryResult = (VertxQueryResult) actualExecuteResult;
+        assertTrue(actualQueryResult.getMetaData() instanceof VertxPostgreSQLQueryResultMetaData);
+    }
+    
+    @Test
+    public void assertExecutePostgreSQLSelectNoColumns() throws SQLException {
+        when(rowSet.columnDescriptors()).thenReturn(Collections.emptyList());
+        Collection<Future<ExecuteResult>> actual = callback.execute(Collections.singletonList(vertxExecutionUnit), true, Collections.emptyMap());
+        assertThat(actual.size(), is(1));
+        ExecuteResult actualExecuteResult = actual.iterator().next().result();
+        assertThat(actualExecuteResult, instanceOf(VertxQueryResult.class));
+        VertxQueryResult actualQueryResult = (VertxQueryResult) actualExecuteResult;
+        assertTrue(actualQueryResult.getMetaData() instanceof VertxPostgreSQLQueryResultMetaData);
     }
     
     @Test
