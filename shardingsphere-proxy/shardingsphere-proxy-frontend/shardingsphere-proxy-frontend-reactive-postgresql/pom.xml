@@ -55,6 +55,7 @@
                             <excludes>
                                 <!-- TODO Consider refactoring tests which changed Field's modifiers -->
                                 <exclude>org.apache.shardingsphere.proxy.frontend.reactive.postgresql.command.query.simple.ReactivePostgreSQLComQueryExecutorTest</exclude>
+                                <exclude>org.apache.shardingsphere.proxy.frontend.reactive.postgresql.command.ReactivePostgreSQLFrontendEngineTest</exclude>
                             </excludes>
                         </configuration>
                     </plugin>
