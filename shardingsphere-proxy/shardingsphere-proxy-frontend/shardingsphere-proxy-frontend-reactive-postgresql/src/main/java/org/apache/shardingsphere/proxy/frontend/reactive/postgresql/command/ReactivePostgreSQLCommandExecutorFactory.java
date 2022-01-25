@@ -32,6 +32,7 @@ import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLCom
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLConnectionContext;
 import org.apache.shardingsphere.proxy.frontend.postgresql.command.PostgreSQLConnectionContextRegistry;
 import org.apache.shardingsphere.proxy.frontend.reactive.command.executor.ReactiveCommandExecutor;
+import org.apache.shardingsphere.proxy.frontend.reactive.postgresql.command.query.extended.PostgreSQLAggregatedBatchedInsertsReactiveCommandExecutor;
 import org.apache.shardingsphere.proxy.frontend.reactive.postgresql.command.query.extended.PostgreSQLAggregatedReactiveCommandExecutor;
 import org.apache.shardingsphere.proxy.frontend.reactive.postgresql.command.query.extended.bind.ReactivePostgreSQLComBindExecutor;
 import org.apache.shardingsphere.proxy.frontend.reactive.postgresql.command.query.simple.ReactivePostgreSQLComQueryExecutor;
@@ -64,11 +65,32 @@ public final class ReactivePostgreSQLCommandExecutorFactory {
         }
         PostgreSQLAggregatedCommandPacket aggregatedCommandPacket = (PostgreSQLAggregatedCommandPacket) commandPacket;
         // TODO Batched inserts using Vert.x backend
+        if (aggregatedCommandPacket.isContainsBatchedInserts()) {
+            return new PostgreSQLAggregatedReactiveCommandExecutor(getExecutorsOfAggregatedBatchedInserts(aggregatedCommandPacket, connectionSession, connectionContext));
+        }
         List<ReactiveCommandExecutor> result = new ArrayList<>(aggregatedCommandPacket.getPackets().size());
         for (PostgreSQLCommandPacket each : aggregatedCommandPacket.getPackets()) {
             result.add(getReactiveCommandExecutor((PostgreSQLCommandPacketType) each.getIdentifier(), each, connectionSession, connectionContext));
         }
         return new PostgreSQLAggregatedReactiveCommandExecutor(result);
+    }
+    
+    private static List<ReactiveCommandExecutor> getExecutorsOfAggregatedBatchedInserts(final PostgreSQLAggregatedCommandPacket aggregatedCommandPacket,
+                                                                                final ConnectionSession connectionSession, final PostgreSQLConnectionContext connectionContext) {
+        List<PostgreSQLCommandPacket> packets = aggregatedCommandPacket.getPackets();
+        int firstBindIndex = aggregatedCommandPacket.getFirstBindIndex();
+        int lastExecuteIndex = aggregatedCommandPacket.getLastExecuteIndex();
+        List<ReactiveCommandExecutor> result = new ArrayList<>(firstBindIndex + packets.size() - lastExecuteIndex);
+        for (int i = 0; i < firstBindIndex; i++) {
+            PostgreSQLCommandPacket each = packets.get(i);
+            result.add(getReactiveCommandExecutor((PostgreSQLCommandPacketType) each.getIdentifier(), each, connectionSession, connectionContext));
+        }
+        result.add(new PostgreSQLAggregatedBatchedInsertsReactiveCommandExecutor(connectionSession, packets.subList(firstBindIndex, lastExecuteIndex + 1)));
+        for (int i = lastExecuteIndex + 1; i < packets.size(); i++) {
+            PostgreSQLCommandPacket each = packets.get(i);
+            result.add(getReactiveCommandExecutor((PostgreSQLCommandPacketType) each.getIdentifier(), each, connectionSession, connectionContext));
+        }
+        return result;
     }
     
     @SneakyThrows(SQLException.class)
