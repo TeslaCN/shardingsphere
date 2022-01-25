@@ -35,12 +35,12 @@ public final class UnspecifiedTypeListTuple extends ListTuple {
     
     static {
         LOCAL_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(
-                "[yyyy-MM-dd][yyyy_MM_dd][MM/dd/yy][yyyyMMdd][yyMMdd]" +
-                        "['T'][ ]" +
-                        "[HH:mm:ss][HHmmss][HH:mm][HHmm]" +
-                        "[.SSSSSS][.SSSSS][.SSSS][.SSS][.SS][.S]" +
-                        "[ ]" +
-                        "[XXXXX][XXXX][XXX][XX][X]"
+                "[yyyy-MM-dd][yyyy_MM_dd][MM/dd/yy][yyyyMMdd][yyMMdd]"
+                        + "['T'][ ]"
+                        + "[HH:mm:ss][HHmmss][HH:mm][HHmm]"
+                        + "[.SSSSSS][.SSSSS][.SSSS][.SSS][.SS][.S]"
+                        + "[ ]"
+                        + "[XXXXX][XXXX][XXX][XX][X]"
         );
     }
     
