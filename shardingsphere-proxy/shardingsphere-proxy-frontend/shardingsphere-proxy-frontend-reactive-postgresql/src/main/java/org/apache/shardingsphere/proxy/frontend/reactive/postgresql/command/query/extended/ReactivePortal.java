@@ -135,9 +135,10 @@ public final class ReactivePortal implements Portal<Future<Void>> {
     @SneakyThrows(SQLException.class)
     @Override
     public List<PostgreSQLPacket> execute(final int maxRows) {
+        int fetchRows = maxRows > 0 ? maxRows : Integer.MAX_VALUE;
         // TODO maxRows unsupported yet
         List<PostgreSQLPacket> result = new LinkedList<>();
-        while (hasNext()) {
+        for (int i = 0; i < fetchRows && hasNext(); i++) {
             result.add(nextPacket());
         }
         result.add(createExecutionCompletedPacket(result.size()));
