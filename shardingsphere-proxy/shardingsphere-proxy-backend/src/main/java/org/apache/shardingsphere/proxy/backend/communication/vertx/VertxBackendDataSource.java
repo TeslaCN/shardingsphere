@@ -60,7 +60,7 @@ public final class VertxBackendDataSource implements BackendDataSource {
     private final Vertx vertx;
     
     private VertxBackendDataSource() {
-        vertx = Vertx.vertx(new VertxOptions().setPreferNativeTransport(true).setEventLoopPoolSize(determineEventLoopPoolSize()));
+        vertx = Vertx.vertx(new VertxOptions().setPreferNativeTransport(true).setEventLoopPoolSize(2 * determineEventLoopPoolSize()));
     }
     
     private int determineEventLoopPoolSize() {
