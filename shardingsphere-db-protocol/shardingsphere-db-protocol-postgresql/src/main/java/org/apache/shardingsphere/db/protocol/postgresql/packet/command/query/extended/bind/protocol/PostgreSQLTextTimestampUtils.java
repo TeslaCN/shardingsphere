@@ -20,10 +20,8 @@ package org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.ex
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 
 /**
  * Utils for PostgreSQL timestamp.
@@ -46,11 +44,7 @@ public final class PostgreSQLTextTimestampUtils {
      * @param value text value to be parsed
      * @return timestamp
      */
-    public static Timestamp parse(final String value) {
-        try {
-            return Timestamp.valueOf(LocalDateTime.from(POSTGRESQL_DATE_TIME_FORMATTER.parse(value)));
-        } catch (final DateTimeParseException ignored) {
-            return Timestamp.valueOf(value);
-        }
+    public static LocalDateTime parse(final String value) {
+        return LocalDateTime.from(POSTGRESQL_DATE_TIME_FORMATTER.parse(value));
     }
 }
