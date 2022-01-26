@@ -60,11 +60,11 @@ public final class VertxBackendDataSource implements BackendDataSource {
     private final Vertx vertx;
     
     private VertxBackendDataSource() {
-        vertx = Vertx.vertx(new VertxOptions().setPreferNativeTransport(true).setEventLoopPoolSize(2 * determineEventLoopPoolSize()));
+        vertx = Vertx.vertx(new VertxOptions().setPreferNativeTransport(true).setEventLoopPoolSize(determineEventLoopPoolSize()));
     }
     
     private int determineEventLoopPoolSize() {
-        return Math.min(CpuCoreSensor.availableProcessors(), NettyRuntime.availableProcessors());
+        return Math.min(2 * CpuCoreSensor.availableProcessors(), NettyRuntime.availableProcessors());
     }
     
     /**
