@@ -161,6 +161,9 @@ public final class EpollSingleThreadExecutorService implements ExecutorService, 
             return true;
         }
         synchronized (this) {
+            if (!workThread.isAlive()) {
+                return true;
+            }
             wait(unit.toMillis(timeout));
         }
         return !workThread.isAlive();
