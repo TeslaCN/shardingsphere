@@ -109,6 +109,9 @@ public final class EpollSingleThreadExecutorService implements ExecutorService, 
                 }
             }
         }
+        synchronized (this) {
+            notifyAll();
+        }
     }
     
     @Override
@@ -121,6 +124,24 @@ public final class EpollSingleThreadExecutorService implements ExecutorService, 
     public void shutdown() {
         shutdown = true;
         workThread.interrupt();
+        closeResources();
+    }
+    
+    private void closeResources() {
+        try {
+            try {
+                eventFd.close();
+            } catch (IOException e) {
+                log.warn("Failed to close the event fd.", e);
+            }
+            try {
+                epollFd.close();
+            } catch (IOException e) {
+                log.warn("Failed to close the epoll fd.", e);
+            }
+        } finally {
+            events.free();
+        }
     }
     
     @Override
@@ -136,7 +157,7 @@ public final class EpollSingleThreadExecutorService implements ExecutorService, 
     @Override
     public boolean awaitTermination(final long timeout, final TimeUnit unit) throws InterruptedException {
         synchronized (this) {
-            this.wait(unit.toMillis(timeout));
+            wait(unit.toMillis(timeout));
         }
         return !workThread.isAlive();
     }
