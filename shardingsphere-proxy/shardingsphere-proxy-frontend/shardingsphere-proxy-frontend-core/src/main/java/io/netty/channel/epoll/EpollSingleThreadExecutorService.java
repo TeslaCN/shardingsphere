@@ -84,8 +84,7 @@ public final class EpollSingleThreadExecutorService implements ExecutorService, 
             Runnable work = workQueue.poll();
             if (null == work) {
                 try {
-                    int strategy = epollWaitNoTimerChange();
-                    System.out.println(strategy);
+                    epollWaitNoTimerChange();
                 } catch (final IOException ex) {
                     throw new RuntimeException(ex);
                 }
@@ -95,8 +94,8 @@ public final class EpollSingleThreadExecutorService implements ExecutorService, 
         }
     }
     
-    private int epollWaitNoTimerChange() throws IOException {
-        return Native.epollWait(epollFd, events, false);
+    private void epollWaitNoTimerChange() throws IOException {
+        Native.epollWait(epollFd, events, false);
     }
     
     @Override
