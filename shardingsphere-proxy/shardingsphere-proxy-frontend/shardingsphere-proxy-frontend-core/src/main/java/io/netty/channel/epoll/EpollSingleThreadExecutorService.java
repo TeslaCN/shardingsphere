@@ -18,22 +18,26 @@
 package io.netty.channel.epoll;
 
 import io.netty.channel.unix.FileDescriptor;
-import io.netty.util.internal.shaded.org.jctools.queues.MpscUnboundedArrayQueue;
+import io.netty.util.internal.shaded.org.jctools.queues.MpscArrayQueue;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
+/**
+ * Experimental.
+ * Using Epoll instead of {@link java.util.concurrent.ThreadPoolExecutor} with {@link java.util.concurrent.LinkedBlockingQueue} may have high throughput in some situation.
+ */
+@Slf4j
 public final class EpollSingleThreadExecutorService implements ExecutorService, Runnable {
     
-    private final Queue<Runnable> workQueue = new MpscUnboundedArrayQueue<>(128);
+    private final Queue<Runnable> workQueue = new MpscArrayQueue<>(128);
     
     private final EpollEventArray events = new EpollEventArray(16);
     
@@ -78,24 +82,33 @@ public final class EpollSingleThreadExecutorService implements ExecutorService, 
         workThread.start();
     }
     
+    /**
+     * Is {@link EpollSingleThreadExecutorService} available.
+     *
+     * @return is {@link EpollSingleThreadExecutorService} available
+     */
+    public static boolean isAvailable() {
+        return Epoll.isAvailable();
+    }
+    
     @Override
     public void run() {
         while (!shutdown) {
             Runnable work = workQueue.poll();
             if (null == work) {
                 try {
-                    epollWaitNoTimerChange();
-                } catch (final IOException ex) {
-                    throw new RuntimeException(ex);
+                    Native.epollWait(epollFd, events, false);
+                } catch (final Throwable t) {
+                    log.warn("Epoll wait error in " + workThread.getName(), t);
                 }
             } else {
-                work.run();
+                try {
+                    work.run();
+                } catch (final Throwable t) {
+                    log.error("Error occurred in " + workThread.getName(), t);
+                }
             }
         }
-    }
-    
-    private void epollWaitNoTimerChange() throws IOException {
-        Native.epollWait(epollFd, events, false);
     }
     
     @Override
@@ -111,23 +124,26 @@ public final class EpollSingleThreadExecutorService implements ExecutorService, 
     }
     
     @Override
-    public List<Runnable> shutdownNow() {
-        throw new UnsupportedOperationException();
-    }
-    
-    @Override
     public boolean isShutdown() {
         return shutdown;
     }
     
     @Override
     public boolean isTerminated() {
-        return false;
+        return !workThread.isAlive();
     }
     
     @Override
     public boolean awaitTermination(final long timeout, final TimeUnit unit) throws InterruptedException {
-        return false;
+        synchronized (this) {
+            this.wait(unit.toMillis(timeout));
+        }
+        return !workThread.isAlive();
+    }
+    
+    @Override
+    public List<Runnable> shutdownNow() {
+        throw new UnsupportedOperationException();
     }
     
     @Override
@@ -146,22 +162,22 @@ public final class EpollSingleThreadExecutorService implements ExecutorService, 
     }
     
     @Override
-    public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> tasks) throws InterruptedException {
+    public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> tasks) {
         throw new UnsupportedOperationException();
     }
     
     @Override
-    public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> tasks, final long timeout, final TimeUnit unit) throws InterruptedException {
+    public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> tasks, final long timeout, final TimeUnit unit) {
         throw new UnsupportedOperationException();
     }
     
     @Override
-    public <T> T invokeAny(final Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException {
+    public <T> T invokeAny(final Collection<? extends Callable<T>> tasks) {
         throw new UnsupportedOperationException();
     }
     
     @Override
-    public <T> T invokeAny(final Collection<? extends Callable<T>> tasks, final long timeout, final TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+    public <T> T invokeAny(final Collection<? extends Callable<T>> tasks, final long timeout, final TimeUnit unit) {
         throw new UnsupportedOperationException();
     }
 }
