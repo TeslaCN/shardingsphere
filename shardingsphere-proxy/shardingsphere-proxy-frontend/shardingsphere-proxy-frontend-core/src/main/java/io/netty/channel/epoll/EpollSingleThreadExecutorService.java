@@ -157,6 +157,9 @@ public final class EpollSingleThreadExecutorService implements ExecutorService, 
     
     @Override
     public boolean awaitTermination(final long timeout, final TimeUnit unit) throws InterruptedException {
+        if (!workThread.isAlive()) {
+            return true;
+        }
         synchronized (this) {
             wait(unit.toMillis(timeout));
         }
