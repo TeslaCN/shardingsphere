@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Experimental.
- * Using Epoll instead of {@link java.util.concurrent.ThreadPoolExecutor} with {@link java.util.concurrent.LinkedBlockingQueue} may have high throughput in some situation.
+ * Using Epoll instead of {@link java.util.concurrent.ThreadPoolExecutor} with {@link java.util.concurrent.LinkedBlockingQueue} may have higher throughput in some situation.
  */
 @Slf4j
 public final class EpollSingleThreadExecutorService implements ExecutorService, Runnable {
