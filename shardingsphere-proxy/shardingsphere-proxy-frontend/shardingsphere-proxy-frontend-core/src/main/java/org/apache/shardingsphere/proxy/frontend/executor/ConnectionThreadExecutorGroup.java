@@ -17,14 +17,13 @@
 
 package org.apache.shardingsphere.proxy.frontend.executor;
 
+import io.netty.channel.epoll.EpollSingleThreadExecutorService;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -61,7 +60,8 @@ public final class ConnectionThreadExecutorGroup {
     }
     
     private ExecutorService newSingleThreadExecutorService(final int connectionId) {
-        return new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), runnable -> new Thread(runnable, String.format("Connection-%d-ThreadExecutor", connectionId)));
+//        return new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), runnable -> new Thread(runnable, String.format("Connection-%d-ThreadExecutor", connectionId)));
+        return new EpollSingleThreadExecutorService("Connection-" + connectionId + "EpollThreadExecutor");
     }
     
     /**
