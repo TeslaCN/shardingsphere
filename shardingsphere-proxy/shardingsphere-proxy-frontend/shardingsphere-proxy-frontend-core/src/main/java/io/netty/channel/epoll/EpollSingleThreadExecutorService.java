@@ -123,6 +123,7 @@ public final class EpollSingleThreadExecutorService implements ExecutorService, 
     @Override
     public void shutdown() {
         shutdown = true;
+        Native.eventFdWrite(eventFd.intValue(), 1L);
         workThread.interrupt();
         closeResources();
     }
