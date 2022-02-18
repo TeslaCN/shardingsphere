@@ -107,7 +107,7 @@ public final class PostgreSQLBatchedInsertsVertxExecutor {
      * @return inserted rows
      */
     @SneakyThrows(SQLException.class)
-    public Future<Integer> executeBatch()  {
+    public Future<Integer> executeBatch() {
         addBatchedParametersToPreparedStatements();
         return executeBatchedPreparedStatements();
     }

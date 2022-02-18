@@ -85,7 +85,7 @@ public final class ReactivePostgreSQLComQueryExecutor implements ReactiveCommand
                     }
                     result.add(new PostgreSQLCommandCompletePacket(PostgreSQLCommand.SELECT.name(), dataRows));
                 }
-                result.add(new PostgreSQLReadyForQueryPacket(connectionSession.getTransactionStatus().isInTransaction()));
+                result.add(connectionSession.getTransactionStatus().isInTransaction() ? PostgreSQLReadyForQueryPacket.IN_TRANSACTION : PostgreSQLReadyForQueryPacket.NOT_IN_TRANSACTION);
                 return Future.succeededFuture(result);
             } catch (final SQLException ex) {
                 return Future.failedFuture(ex);
