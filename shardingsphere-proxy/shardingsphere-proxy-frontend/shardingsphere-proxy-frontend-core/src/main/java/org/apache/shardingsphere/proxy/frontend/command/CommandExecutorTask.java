@@ -17,6 +17,8 @@
 
 package org.apache.shardingsphere.proxy.frontend.command;
 
+import co.paralleluniverse.fibers.SuspendExecution;
+import co.paralleluniverse.strands.SuspendableRunnable;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import lombok.RequiredArgsConstructor;
@@ -49,7 +51,7 @@ import java.util.stream.Collectors;
  */
 @RequiredArgsConstructor
 @Slf4j
-public final class CommandExecutorTask implements Runnable {
+public final class CommandExecutorTask implements SuspendableRunnable {
     
     private final DatabaseProtocolFrontendEngine databaseProtocolFrontendEngine;
     
@@ -66,7 +68,7 @@ public final class CommandExecutorTask implements Runnable {
      * @see <a href="https://github.com/apache/skywalking/blob/master/docs/en/guides/Java-Plugin-Development-Guide.md#user-content-plugin-development-guide">Plugin Development Guide</a>
      */
     @Override
-    public void run() {
+    public void run() throws SuspendExecution {
         boolean isNeedFlush = false;
         boolean sqlShowEnabled = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps().getValue(ConfigurationPropertyKey.SQL_SHOW);
         try (PacketPayload payload = databaseProtocolFrontendEngine.getCodecEngine().createPacketPayload((ByteBuf) message, context.channel().attr(CommonConstants.CHARSET_ATTRIBUTE_KEY).get())) {
