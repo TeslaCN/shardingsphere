@@ -29,6 +29,8 @@ import org.apache.shardingsphere.db.protocol.postgresql.payload.PostgreSQLPacket
 
 import java.sql.SQLException;
 import java.sql.SQLXML;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
 
 /**
@@ -71,6 +73,11 @@ public final class PostgreSQLDataRowPacket implements PostgreSQLIdentifierPacket
             payload.writeBytes((byte[]) each);
         } else if (each instanceof SQLXML) {
             writeSQLXMLData(payload, each);
+        } else if (each instanceof LocalDateTime) {
+            String result = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").format((LocalDateTime) each);
+            byte[] resultBytes = result.getBytes(payload.getCharset());
+            payload.writeInt4(resultBytes.length);
+            payload.writeBytes(resultBytes);
         } else {
             byte[] columnData = each.toString().getBytes(payload.getCharset());
             payload.writeInt4(columnData.length);

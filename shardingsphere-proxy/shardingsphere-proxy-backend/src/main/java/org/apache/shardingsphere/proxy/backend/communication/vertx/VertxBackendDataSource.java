@@ -27,8 +27,11 @@ import io.vertx.core.VertxOptions;
 import io.vertx.core.impl.cpu.CpuCoreSensor;
 import io.vertx.mysqlclient.MySQLConnectOptions;
 import io.vertx.mysqlclient.MySQLPool;
+import io.vertx.pgclient.PgConnectOptions;
+import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PoolOptions;
+import io.vertx.sqlclient.SqlConnectOptions;
 import io.vertx.sqlclient.SqlConnection;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -61,7 +64,7 @@ public final class VertxBackendDataSource implements BackendDataSource {
     }
     
     private int determineEventLoopPoolSize() {
-        return Math.min(CpuCoreSensor.availableProcessors(), NettyRuntime.availableProcessors());
+        return Math.min(2 * CpuCoreSensor.availableProcessors(), NettyRuntime.availableProcessors());
     }
     
     /**
@@ -135,22 +138,38 @@ public final class VertxBackendDataSource implements BackendDataSource {
             case "mysql":
                 return createMySQLPool(value, uri);
             case "postgresql":
-                throw new UnsupportedOperationException("For now");
+                return createPostgreSQLPool(value, uri);
             case "opengauss":
-                throw new UnsupportedOperationException("For now");
+                throw new UnsupportedOperationException("Vert.x openGauss driver not available yet");
             default:
                 throw new UnsupportedOperationException("Database " + uri.getScheme() + " unsupported");
         }
     }
     
-    private MySQLPool createMySQLPool(final HikariDataSource value, final URI uri) {
-        MySQLConnectOptions options = new MySQLConnectOptions().setHost(uri.getHost()).setPort(uri.getPort()).setDatabase(uri.getPath().replace("/", ""))
+    private MySQLPool createMySQLPool(final HikariDataSource dataSource, final URI jdbcUri) {
+        MySQLConnectOptions options = new MySQLConnectOptions();
+        populateSqlConnectOptions(options, dataSource, jdbcUri);
+        PoolOptions poolOptions = getPoolOptionsFromHikariDataSource(dataSource);
+        return MySQLPool.pool(vertx, options, poolOptions);
+    }
+    
+    private PgPool createPostgreSQLPool(final HikariDataSource dataSource, final URI jdbcUri) {
+        PgConnectOptions options = new PgConnectOptions();
+        populateSqlConnectOptions(options, dataSource, jdbcUri);
+        PoolOptions poolOptions = getPoolOptionsFromHikariDataSource(dataSource);
+        return PgPool.pool(vertx, options, poolOptions);
+    }
+    
+    private void populateSqlConnectOptions(final SqlConnectOptions target, final HikariDataSource value, final URI uri) {
+        target.setHost(uri.getHost()).setPort(uri.getPort()).setDatabase(uri.getPath().replace("/", ""))
                 .setUser(value.getUsername()).setCachePreparedStatements(true).setPreparedStatementCacheMaxSize(16384);
         if (!Strings.isNullOrEmpty(value.getPassword())) {
-            options = options.setPassword(value.getPassword());
+            target.setPassword(value.getPassword());
         }
-        PoolOptions poolOptions = new PoolOptions().setMaxSize(value.getMaximumPoolSize()).setIdleTimeout((int) value.getIdleTimeout()).setIdleTimeoutUnit(TimeUnit.MILLISECONDS)
-                .setConnectionTimeout((int) value.getConnectionTimeout()).setConnectionTimeoutUnit(TimeUnit.MILLISECONDS);
-        return MySQLPool.pool(vertx, options, poolOptions);
+    }
+    
+    private PoolOptions getPoolOptionsFromHikariDataSource(final HikariDataSource dataSource) {
+        return new PoolOptions().setMaxSize(dataSource.getMaximumPoolSize()).setIdleTimeout((int) dataSource.getIdleTimeout()).setIdleTimeoutUnit(TimeUnit.MILLISECONDS)
+                .setConnectionTimeout((int) dataSource.getConnectionTimeout()).setConnectionTimeoutUnit(TimeUnit.MILLISECONDS);
     }
 }
