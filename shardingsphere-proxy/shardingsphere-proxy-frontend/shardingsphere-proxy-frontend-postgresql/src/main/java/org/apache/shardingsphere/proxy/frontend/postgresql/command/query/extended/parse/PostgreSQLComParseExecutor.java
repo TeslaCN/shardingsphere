@@ -24,6 +24,7 @@ import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.ext
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.extended.PostgreSQLPreparedStatementRegistry;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.extended.parse.PostgreSQLComParsePacket;
 import org.apache.shardingsphere.db.protocol.postgresql.packet.command.query.extended.parse.PostgreSQLParseCompletePacket;
+import org.apache.shardingsphere.infra.config.props.ConfigurationPropertyKey;
 import org.apache.shardingsphere.infra.database.type.DatabaseTypeRegistry;
 import org.apache.shardingsphere.infra.parser.ShardingSphereSQLParserEngine;
 import org.apache.shardingsphere.mode.metadata.MetaDataContexts;
@@ -60,7 +61,8 @@ public final class PostgreSQLComParseExecutor implements CommandExecutor {
         ShardingSphereSQLParserEngine sqlParserEngine = null;
         String sql = packet.getSql();
         SQLStatement sqlStatement = sql.trim().isEmpty() ? new EmptyStatement() : (sqlParserEngine = createShardingSphereSQLParserEngine(connectionSession.getDatabaseName())).parse(sql, true);
-        if (sqlStatement.getParameterCount() > 0) {
+        boolean isVertx = "ExperimentalVertx".equals(ProxyContext.getInstance().getContextManager().getMetaDataContexts().getProps().getValue(ConfigurationPropertyKey.PROXY_BACKEND_DRIVER_TYPE));
+        if (sqlStatement.getParameterCount() > 0 && !isVertx) {
             sql = convertSQLToJDBCStyle(sqlStatement, sql);
             sqlStatement = sqlParserEngine.parse(sql, true);
         }
