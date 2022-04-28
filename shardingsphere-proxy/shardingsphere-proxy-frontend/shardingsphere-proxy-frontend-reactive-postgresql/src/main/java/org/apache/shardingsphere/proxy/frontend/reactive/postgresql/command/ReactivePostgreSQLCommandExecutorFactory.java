@@ -65,7 +65,7 @@ public final class ReactivePostgreSQLCommandExecutorFactory {
         }
         PostgreSQLAggregatedCommandPacket aggregatedCommandPacket = (PostgreSQLAggregatedCommandPacket) commandPacket;
         // TODO Batched inserts using Vert.x backend
-        if (aggregatedCommandPacket.isContainsBatchedInserts()) {
+        if (aggregatedCommandPacket.isContainsBatchedStatements()) {
             return new PostgreSQLAggregatedReactiveCommandExecutor(getExecutorsOfAggregatedBatchedInserts(aggregatedCommandPacket, connectionSession, connectionContext));
         }
         List<ReactiveCommandExecutor> result = new ArrayList<>(aggregatedCommandPacket.getPackets().size());
@@ -76,7 +76,7 @@ public final class ReactivePostgreSQLCommandExecutorFactory {
     }
     
     private static List<ReactiveCommandExecutor> getExecutorsOfAggregatedBatchedInserts(final PostgreSQLAggregatedCommandPacket aggregatedCommandPacket,
-                                                                                final ConnectionSession connectionSession, final PostgreSQLConnectionContext connectionContext) {
+                                                                                        final ConnectionSession connectionSession, final PostgreSQLConnectionContext connectionContext) {
         List<PostgreSQLCommandPacket> packets = aggregatedCommandPacket.getPackets();
         int firstBindIndex = aggregatedCommandPacket.getFirstBindIndex();
         int lastExecuteIndex = aggregatedCommandPacket.getLastExecuteIndex();

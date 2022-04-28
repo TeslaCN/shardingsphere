@@ -69,8 +69,7 @@ public final class ReactivePostgreSQLCommandExecutorFactoryTest {
                 new InputOutput(PostgreSQLCommandPacketType.EXECUTE_COMMAND, PostgreSQLComExecutePacket.class, WrappedReactiveCommandExecutor.class),
                 new InputOutput(PostgreSQLCommandPacketType.SYNC_COMMAND, PostgreSQLComSyncPacket.class, WrappedReactiveCommandExecutor.class),
                 new InputOutput(PostgreSQLCommandPacketType.TERMINATE, PostgreSQLComTerminationPacket.class, WrappedReactiveCommandExecutor.class),
-                new InputOutput(null, PostgreSQLAggregatedCommandPacket.class, PostgreSQLAggregatedReactiveCommandExecutor.class)
-        );
+                new InputOutput(null, PostgreSQLAggregatedCommandPacket.class, PostgreSQLAggregatedReactiveCommandExecutor.class));
         for (InputOutput inputOutput : inputOutputs) {
             Class<? extends PostgreSQLCommandPacket> commandPacketClass = inputOutput.getCommandPacketClass();
             if (null == commandPacketClass) {

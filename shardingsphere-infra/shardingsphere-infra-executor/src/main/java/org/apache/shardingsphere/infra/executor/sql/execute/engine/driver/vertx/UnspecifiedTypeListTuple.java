@@ -40,8 +40,7 @@ public final class UnspecifiedTypeListTuple extends ListTuple {
                         + "[HH:mm:ss][HHmmss][HH:mm][HHmm]"
                         + "[.SSSSSS][.SSSSS][.SSSS][.SSS][.SS][.S]"
                         + "[ ]"
-                        + "[XXXXX][XXXX][XXX][XX][X]"
-        );
+                        + "[XXXXX][XXXX][XXX][XX][X]");
     }
     
     public UnspecifiedTypeListTuple(final List<Object> list) {

@@ -55,12 +55,6 @@ public final class ReactivePostgreSQLFrontendEngineTest {
     }
     
     @Test
-    public void assertGetDatabaseType() {
-        when(delegated.getDatabaseType()).thenReturn("expected");
-        assertThat(engine.getDatabaseType(), is("expected"));
-    }
-    
-    @Test
     public void assertGetFrontendContext() {
         FrontendContext expected = mock(FrontendContext.class);
         when(delegated.getFrontendContext()).thenReturn(expected);

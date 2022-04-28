@@ -35,12 +35,7 @@ public final class ReactivePostgreSQLFrontendEngine implements ReactiveDatabaseP
     private final PostgreSQLFrontendEngine delegated = new PostgreSQLFrontendEngine();
     
     private final ReactiveCommandExecuteEngine reactiveCommandExecuteEngine =
-        (type, packet, connectionSession) -> ReactivePostgreSQLCommandExecutorFactory.newInstance((PostgreSQLCommandPacketType) type, packet, connectionSession);
-    
-    @Override
-    public String getDatabaseType() {
-        return delegated.getDatabaseType();
-    }
+            (type, packet, connectionSession) -> ReactivePostgreSQLCommandExecutorFactory.newInstance((PostgreSQLCommandPacketType) type, packet, connectionSession);
     
     @Override
     public FrontendContext getFrontendContext() {
@@ -68,7 +63,17 @@ public final class ReactivePostgreSQLFrontendEngine implements ReactiveDatabaseP
     }
     
     @Override
+    public void handleException(final ConnectionSession connectionSession) {
+        
+    }
+    
+    @Override
     public ReactiveCommandExecuteEngine getReactiveCommandExecuteEngine() {
         return reactiveCommandExecuteEngine;
+    }
+    
+    @Override
+    public String getType() {
+        return "PostgreSQL";
     }
 }

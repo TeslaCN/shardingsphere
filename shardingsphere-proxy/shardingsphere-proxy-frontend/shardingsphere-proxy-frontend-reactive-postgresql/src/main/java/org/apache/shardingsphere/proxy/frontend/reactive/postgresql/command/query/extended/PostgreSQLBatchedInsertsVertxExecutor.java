@@ -38,6 +38,7 @@ import org.apache.shardingsphere.infra.executor.sql.context.ExecutionUnit;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.driver.vertx.UnspecifiedTypeListTuple;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.driver.vertx.VertxExecutionUnit;
 import org.apache.shardingsphere.infra.executor.sql.prepare.driver.DriverExecutionPrepareEngine;
+import org.apache.shardingsphere.infra.executor.sql.prepare.driver.ExecutorStatementManager;
 import org.apache.shardingsphere.infra.executor.sql.prepare.driver.vertx.VertxExecutionContext;
 import org.apache.shardingsphere.infra.rule.ShardingSphereRule;
 import org.apache.shardingsphere.mode.metadata.MetaDataContexts;
@@ -91,14 +92,14 @@ public final class PostgreSQLBatchedInsertsVertxExecutor {
     
     private LogicSQL createLogicSQL(final List<Object> parameters) {
         SQLStatementContext<?> sqlStatementContext = SQLStatementContextFactory.newInstance(
-                metaDataContexts.getMetaDataMap(), parameters, preparedStatement.getSqlStatement(), connectionSession.getSchemaName());
+                metaDataContexts.getMetaDataMap(), parameters, preparedStatement.getSqlStatement(), connectionSession.getDatabaseName());
         return new LogicSQL(sqlStatementContext, preparedStatement.getSql(), parameters);
     }
     
     private ExecutionContext createExecutionContext(final LogicSQL logicSQL) {
         SQLCheckEngine.check(logicSQL.getSqlStatementContext().getSqlStatement(), logicSQL.getParameters(),
-                metaDataContexts.getMetaData(connectionSession.getSchemaName()).getRuleMetaData().getRules(), connectionSession.getSchemaName(), metaDataContexts.getMetaDataMap(), null);
-        return kernelProcessor.generateExecutionContext(logicSQL, metaDataContexts.getMetaData(connectionSession.getSchemaName()), metaDataContexts.getProps());
+                metaDataContexts.getMetaData(connectionSession.getDatabaseName()).getRuleMetaData().getRules(), connectionSession.getDatabaseName(), metaDataContexts.getMetaDataMap(), null);
+        return kernelProcessor.generateExecutionContext(logicSQL, metaDataContexts.getMetaData(connectionSession.getDatabaseName()), metaDataContexts.getProps());
     }
     
     /**
@@ -113,10 +114,11 @@ public final class PostgreSQLBatchedInsertsVertxExecutor {
     }
     
     private void addBatchedParametersToPreparedStatements() throws SQLException {
-        Collection<ShardingSphereRule> rules = metaDataContexts.getMetaData(connectionSession.getSchemaName()).getRuleMetaData().getRules();
+        Collection<ShardingSphereRule> rules = metaDataContexts.getMetaData(connectionSession.getDatabaseName()).getRuleMetaData().getRules();
         DriverExecutionPrepareEngine<VertxExecutionUnit, Future<? extends SqlClient>> prepareEngine = new DriverExecutionPrepareEngine<>(
                 "Vert.x", metaDataContexts.getProps().<Integer>getValue(ConfigurationPropertyKey.MAX_CONNECTIONS_SIZE_PER_QUERY),
-                (VertxBackendConnection) connectionSession.getBackendConnection(), new VertxExecutionContext(), rules);
+                (VertxBackendConnection) connectionSession.getBackendConnection(), (ExecutorStatementManager<Future<? extends SqlClient>, ?, ?>) connectionSession.getStatementManager(),
+                new VertxExecutionContext(), rules);
         executionGroupContext = prepareEngine.prepare(anyExecutionContext.getRouteContext(), executionUnitParameters.keySet());
     }
     
