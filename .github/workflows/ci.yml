@@ -76,7 +76,7 @@ jobs:
       - name: Build with Maven
         shell: cmd
         run: |
-          .\mvnw -B --no-transfer-progress clean install -Dmaven.javadoc.skip=true -DskipTests -T1C < nul
+          .\mvnw -B --no-transfer-progress clean install -Dmaven.javadoc.skip=true -T1C < nul
           echo "mvnw exited"
       - name: Build examples with Maven
         run: ./mvnw -B -f examples/pom.xml clean package -DskipTests
