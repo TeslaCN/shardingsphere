@@ -63,4 +63,6 @@ public final class ShardingRuleConfiguration implements DatabaseRuleConfiguratio
     private Map<String, AlgorithmConfiguration> keyGenerators = new LinkedHashMap<>();
     
     private Map<String, AlgorithmConfiguration> auditors = new LinkedHashMap<>();
+    
+    private boolean shardingCacheEnabled;
 }

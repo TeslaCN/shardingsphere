@@ -22,6 +22,7 @@ import lombok.Getter;
 import org.apache.shardingsphere.infra.config.rule.RuleConfiguration;
 import org.apache.shardingsphere.infra.distsql.constant.ExportableConstants;
 import org.apache.shardingsphere.infra.distsql.constant.ExportableItemConstants;
+import org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
 import org.apache.shardingsphere.infra.metadata.database.schema.QualifiedDatabase;
 import org.apache.shardingsphere.infra.rule.ShardingSphereRule;
 import org.apache.shardingsphere.infra.rule.event.DataSourceStatusChangedEvent;
@@ -211,5 +212,10 @@ public final class ReadwriteSplittingRule implements DatabaseRule, DataSourceCon
     @Override
     public String getType() {
         return ReadwriteSplittingRule.class.getSimpleName();
+    }
+    
+    @Override
+    public boolean isReusable(final Object cacheOwner, final ShardingSphereDatabase database, final List<Object> parameters) {
+        return true;
     }
 }

@@ -31,6 +31,7 @@ import org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
 import org.apache.shardingsphere.infra.metadata.database.schema.decorator.model.ShardingSphereSchema;
 import org.apache.shardingsphere.infra.rule.identifier.scope.DatabaseRule;
 import org.apache.shardingsphere.infra.rule.identifier.type.DataNodeContainedRule;
+import org.apache.shardingsphere.infra.rule.identifier.type.StorageConnectorReusableRule;
 import org.apache.shardingsphere.infra.rule.identifier.type.TableContainedRule;
 import org.apache.shardingsphere.infra.util.exception.ShardingSpherePreconditions;
 import org.apache.shardingsphere.infra.util.expr.InlineExpressionParser;
@@ -45,6 +46,7 @@ import org.apache.shardingsphere.sharding.api.config.strategy.sharding.NoneShard
 import org.apache.shardingsphere.sharding.api.config.strategy.sharding.ShardingStrategyConfiguration;
 import org.apache.shardingsphere.sharding.api.config.strategy.sharding.StandardShardingStrategyConfiguration;
 import org.apache.shardingsphere.sharding.api.sharding.ShardingAutoTableAlgorithm;
+import org.apache.shardingsphere.sharding.cache.ShardingCache;
 import org.apache.shardingsphere.sharding.exception.algorithm.GenerateKeyStrategyNotFoundException;
 import org.apache.shardingsphere.sharding.exception.metadata.ShardingRuleNotFoundException;
 import org.apache.shardingsphere.sharding.factory.KeyGenerateAlgorithmFactory;
@@ -82,7 +84,7 @@ import java.util.stream.Collectors;
  * Sharding rule.
  */
 @Getter
-public final class ShardingRule implements DatabaseRule, DataNodeContainedRule, TableContainedRule {
+public final class ShardingRule implements DatabaseRule, DataNodeContainedRule, TableContainedRule, StorageConnectorReusableRule {
     
     private static final String ALGORITHM_EXPRESSION_KEY = "algorithm-expression";
     
@@ -113,6 +115,8 @@ public final class ShardingRule implements DatabaseRule, DataNodeContainedRule, 
     private final String defaultShardingColumn;
     
     private final Map<String, Collection<DataNode>> shardingTableDataNodes;
+    
+    private final ShardingCache shardingCache = new ShardingCache();
     
     public ShardingRule(final ShardingRuleConfiguration config, final Collection<String> dataSourceNames, final InstanceContext instanceContext) {
         configuration = config;
@@ -785,5 +789,10 @@ public final class ShardingRule implements DatabaseRule, DataNodeContainedRule, 
     @Override
     public String getType() {
         return ShardingRule.class.getSimpleName();
+    }
+    
+    @Override
+    public boolean isReusable(final Object cacheOwner, final ShardingSphereDatabase database, final List<Object> parameters) {
+        return ((ShardingRuleConfiguration) configuration).isShardingCacheEnabled() && shardingCache.isReusable(this, database, (SQLStatementContext<?>) cacheOwner, parameters);
     }
 }

@@ -64,6 +64,8 @@ public final class YamlShardingRuleConfiguration implements YamlRuleConfiguratio
     
     private String defaultShardingColumn;
     
+    private boolean shardingCacheEnabled;
+    
     @Override
     public Class<ShardingRuleConfiguration> getRuleConfigurationType() {
         return ShardingRuleConfiguration.class;

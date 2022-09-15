@@ -17,10 +17,23 @@
 
 package org.apache.shardingsphere.infra.rule.identifier.type;
 
+import org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
 import org.apache.shardingsphere.infra.rule.ShardingSphereRule;
+
+import java.util.List;
 
 /**
  * Storage connector reusable rule.
  */
 public interface StorageConnectorReusableRule extends ShardingSphereRule {
+    
+    /**
+     * Is connector reusable.
+     *
+     * @param cacheOwner cache owner
+     * @param database database
+     * @param parameters parameters
+     * @return is connector reusable
+     */
+    boolean isReusable(Object cacheOwner, ShardingSphereDatabase database, List<Object> parameters);
 }
