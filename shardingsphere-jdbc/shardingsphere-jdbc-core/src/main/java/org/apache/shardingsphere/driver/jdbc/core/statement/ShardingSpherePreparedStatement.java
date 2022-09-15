@@ -137,7 +137,7 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
     
     private final KernelProcessor kernelProcessor;
     
-    private final boolean statementsCacheable;
+    private final StorageConnectorReusableRule storageConnectorReusableRule;
     
     private final TrafficRule trafficRule;
     
@@ -200,20 +200,24 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
         JDBCExecutor jdbcExecutor = new JDBCExecutor(connection.getContextManager().getExecutorEngine(), connection.isHoldTransaction());
         batchPreparedStatementExecutor = new BatchPreparedStatementExecutor(metaDataContexts, jdbcExecutor, connection.getDatabaseName(), eventBusContext);
         kernelProcessor = new KernelProcessor();
-        statementsCacheable = isStatementsCacheable(metaDataContexts.getMetaData().getDatabase(connection.getDatabaseName()).getRuleMetaData());
+        storageConnectorReusableRule = findStorageConnectorReusableRule(metaDataContexts.getMetaData().getDatabase(connection.getDatabaseName()).getRuleMetaData()).orElse(null);
         trafficRule = metaDataContexts.getMetaData().getGlobalRuleMetaData().getSingleRule(TrafficRule.class);
         statementManager = new StatementManager();
     }
     
-    private boolean isStatementsCacheable(final ShardingSphereRuleMetaData databaseRuleMetaData) {
-        return databaseRuleMetaData.findRules(StorageConnectorReusableRule.class).size() == databaseRuleMetaData.getRules().size() && !HintManager.isInstantiated();
+    private Optional<StorageConnectorReusableRule> findStorageConnectorReusableRule(final ShardingSphereRuleMetaData databaseRuleMetaData) {
+        if (HintManager.isInstantiated() || 1 != databaseRuleMetaData.getRules().size()) {
+            return Optional.empty();
+        }
+        Collection<StorageConnectorReusableRule> storageConnectorReusableRules = databaseRuleMetaData.findRules(StorageConnectorReusableRule.class);
+        return 1 == storageConnectorReusableRules.size() ? Optional.of(storageConnectorReusableRules.iterator().next()) : Optional.empty();
     }
     
     @Override
     public ResultSet executeQuery() throws SQLException {
         ResultSet result;
         try {
-            if (statementsCacheable && !statements.isEmpty()) {
+            if (isReusable()) {
                 resetParameters();
                 return statements.iterator().next().executeQuery();
             }
@@ -316,7 +320,7 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
     @Override
     public int executeUpdate() throws SQLException {
         try {
-            if (statementsCacheable && !statements.isEmpty()) {
+            if (isReusable()) {
                 resetParameters();
                 return statements.iterator().next().executeUpdate();
             }
@@ -375,7 +379,7 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
     @Override
     public boolean execute() throws SQLException {
         try {
-            if (statementsCacheable && !statements.isEmpty()) {
+            if (isReusable()) {
                 resetParameters();
                 return statements.iterator().next().execute();
             }
@@ -410,6 +414,11 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
         } finally {
             clearBatch();
         }
+    }
+    
+    private boolean isReusable() {
+        return null != storageConnectorReusableRule && 1 == statements.size()
+                && storageConnectorReusableRule.isReusable(sqlStatementContext, metaDataContexts.getMetaData().getDatabase(connection.getDatabaseName()), getParameters());
     }
     
     private boolean hasRawExecutionRule() {
