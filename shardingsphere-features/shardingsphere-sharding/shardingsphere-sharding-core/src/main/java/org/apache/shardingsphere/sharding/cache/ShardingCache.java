@@ -19,7 +19,9 @@ package org.apache.shardingsphere.sharding.cache;
 
 import com.google.common.collect.Range;
 import org.apache.shardingsphere.infra.binder.statement.SQLStatementContext;
+import org.apache.shardingsphere.infra.binder.statement.dml.DeleteStatementContext;
 import org.apache.shardingsphere.infra.binder.statement.dml.SelectStatementContext;
+import org.apache.shardingsphere.infra.binder.statement.dml.UpdateStatementContext;
 import org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
 import org.apache.shardingsphere.sharding.route.engine.condition.ShardingCondition;
 import org.apache.shardingsphere.sharding.route.engine.condition.engine.impl.WhereClauseShardingConditionEngine;
@@ -52,7 +54,7 @@ public final class ShardingCache {
      * @return is reusable
      */
     public boolean isReusable(final ShardingRule shardingRule, final ShardingSphereDatabase database, final SQLStatementContext<?> sqlStatementContext, final List<Object> parameters) {
-        if (!(sqlStatementContext instanceof SelectStatementContext)) {
+        if (!(sqlStatementContext instanceof SelectStatementContext || sqlStatementContext instanceof UpdateStatementContext || sqlStatementContext instanceof DeleteStatementContext)) {
             return false;
         }
         Map<SQLStatementContext<?>, ShardingCacheContext> cacheMap = getCacheMap();
