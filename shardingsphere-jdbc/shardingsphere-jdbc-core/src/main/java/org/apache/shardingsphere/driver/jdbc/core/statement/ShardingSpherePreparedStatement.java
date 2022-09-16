@@ -418,7 +418,7 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
     
     private boolean isReusable() {
         return null != storageConnectorReusableRule && 1 == statements.size()
-                && storageConnectorReusableRule.isReusable(sqlStatementContext, metaDataContexts.getMetaData().getDatabase(connection.getDatabaseName()), getParameters());
+                && storageConnectorReusableRule.isReusable(sqlStatementContext, metaDataContexts.getMetaData().getDatabase(connection.getDatabaseName()), new ArrayList<>(getParameters()));
     }
     
     private boolean hasRawExecutionRule() {
