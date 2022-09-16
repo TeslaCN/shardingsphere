@@ -581,6 +581,13 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
     public void addBatch() {
         try {
             QueryContext queryContext = createQueryContext();
+            if (isBatchedReusable(queryContext.getParameters())) {
+                ExecutionUnit previousExecutionUnit = executionContext.getExecutionUnits().iterator().next();
+                SQLUnit previousSQLUnit = previousExecutionUnit.getSqlUnit();
+                batchPreparedStatementExecutor.addBatchForExecutionUnits(Collections.singletonList(
+                        new ExecutionUnit(previousExecutionUnit.getDataSourceName(), new SQLUnit(previousSQLUnit.getSql(), queryContext.getParameters(), previousSQLUnit.getTableRouteMappers()))));
+                return;
+            }
             trafficInstanceId = getInstanceIdAndSet(queryContext).orElse(null);
             executionContext = null != trafficInstanceId ? createExecutionContext(queryContext, trafficInstanceId) : createExecutionContext(queryContext);
             batchPreparedStatementExecutor.addBatchForExecutionUnits(executionContext.getExecutionUnits());
@@ -588,6 +595,11 @@ public final class ShardingSpherePreparedStatement extends AbstractPreparedState
             currentResultSet = null;
             clearParameters();
         }
+    }
+    
+    private boolean isBatchedReusable(final List<Object> parameters) {
+        return null != storageConnectorReusableRule && null != executionContext && 1 == executionContext.getExecutionUnits().size()
+                && storageConnectorReusableRule.isReusable(sqlStatementContext, metaDataContexts.getMetaData().getDatabase(connection.getDatabaseName()), parameters);
     }
     
     @Override
