@@ -248,7 +248,6 @@ unreservedWord
     | INSERT
     | INSTEAD
     | INVOKER
-    | INTERVAL
     | ISOLATION
     | KEY
     | LABEL
@@ -406,8 +405,6 @@ unreservedWord
     | TRUSTED
     | TYPE
     | TYPES
-    | TIME
-    | TIMESTAMP
     | UESCAPE
     | UNBOUNDED
     | UNCOMMITTED
@@ -940,6 +937,7 @@ aexprConst
     | funcName STRING_
     | funcName LP_ funcArgList sortClause? RP_ STRING_
     | constTypeName STRING_
+    | constInterval optInterval
     | TRUE
     | FALSE
     | NULL
