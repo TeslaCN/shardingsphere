@@ -22,6 +22,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import org.apache.shardingsphere.dialect.SQLExceptionTransformEngine;
 import org.apache.shardingsphere.driver.executor.DriverExecutor;
+import org.apache.shardingsphere.driver.executor.batch.BatchStatementExecutor;
 import org.apache.shardingsphere.driver.executor.callback.ExecuteCallback;
 import org.apache.shardingsphere.driver.executor.callback.ExecuteUpdateCallback;
 import org.apache.shardingsphere.driver.executor.callback.impl.StatementExecuteQueryCallback;
@@ -56,6 +57,7 @@ import org.apache.shardingsphere.infra.executor.sql.context.SQLUnit;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.ConnectionMode;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.SQLExecutorExceptionHandler;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.driver.jdbc.JDBCExecutionUnit;
+import org.apache.shardingsphere.infra.executor.sql.execute.engine.driver.jdbc.JDBCExecutor;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.driver.jdbc.JDBCExecutorCallback;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.raw.RawSQLExecutionUnit;
 import org.apache.shardingsphere.infra.executor.sql.execute.engine.raw.callback.RawSQLExecutorCallback;
@@ -126,6 +128,8 @@ public final class ShardingSphereStatement extends AbstractStatementAdapter {
     @Getter(AccessLevel.PROTECTED)
     private final StatementManager statementManager;
     
+    private final BatchStatementExecutor batchStatementExecutor;
+    
     private boolean returnGeneratedKeys;
     
     private ExecutionContext executionContext;
@@ -153,6 +157,8 @@ public final class ShardingSphereStatement extends AbstractStatementAdapter {
         kernelProcessor = new KernelProcessor();
         trafficRule = metaDataContexts.getMetaData().getGlobalRuleMetaData().getSingleRule(TrafficRule.class);
         statementManager = new StatementManager();
+        JDBCExecutor jdbcExecutor = new JDBCExecutor(connection.getContextManager().getExecutorEngine(), connection.getConnectionContext());
+        batchStatementExecutor = new BatchStatementExecutor(metaDataContexts, jdbcExecutor, connection.getDatabaseName());
     }
     
     @Override
@@ -505,6 +511,23 @@ public final class ShardingSphereStatement extends AbstractStatementAdapter {
             each.close();
         }
         statements.clear();
+    }
+    
+    @Override
+    public void addBatch(final String sql) throws SQLException {
+        QueryContext queryContext = createQueryContext(sql);
+        checkSameDatabaseNameInTransaction(queryContext.getSqlStatementContext(), connection.getDatabaseName());
+        
+    }
+    
+    @Override
+    public void clearBatch() {
+        batchStatementExecutor.clear();
+    }
+    
+    @Override
+    public int[] executeBatch() throws SQLException {
+        return batchStatementExecutor.executeBatch();
     }
     
     private QueryContext createQueryContext(final String originSQL) {
